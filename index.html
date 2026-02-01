@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skylight Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #475569;
+            --accent: #6366f1;
+        }
+
+        :root.light {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        .theme-transition {
+            transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
+        }
+
+        .theme-text {
+            color: var(--text-primary);
+        }
+
+        .theme-text-muted {
+            color: var(--text-secondary);
+        }
+
+        .sidebar-btn { transition: all 0.3s ease; }
+        .view-btn { transition: all 0.3s ease; }
+        .day-cell { transition: all 0.2s ease; }
+        .todo-item { transition: all 0.3s ease; }
+        .event-badge { transition: all 0.2s ease; }
+
+        .controls-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-spin { animation: spin 1s linear infinite; }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+
+        .calendar-color-kids { background-color: #ec4899; }
+        .calendar-color-personal { background-color: #6366f1; }
+        .calendar-color-work { background-color: #f59e0b; }
+        .calendar-color-family { background-color: #10b981; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen">
+
+    <!-- Event Alert Modal -->
+    <div id="alertModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
+        <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-1 rounded-lg shadow-2xl max-w-md w-full mx-4 animate-pulse-slow">
+            <div class="bg-slate-900 rounded-lg p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center text-2xl animate-bounce">
+                        🔔
+                    </div>
+                    <div>
+                        <div class="text-indigo-400 text-sm font-medium">Upcoming Event</div>
+                        <div id="alert-time" class="text-slate-400 text-xs">Starting soon</div>
+                    </div>
+                </div>
+
+                <h3 id="alert-title" class="text-2xl font-bold text-white mb-2">Event Title</h3>
+                <p id="alert-details" class="text-slate-400 mb-4">Event details will appear here</p>
+
+                <!-- Volume Control -->
+                <div class="flex items-center gap-3 mb-4 p-3 bg-slate-800 rounded-lg">
+                    <span class="text-slate-400 text-sm">🔈</span>
+                    <input type="range" id="alarm-volume" min="0" max="100" value="70"
+                        onchange="setAlarmVolume(this.value)"
+                        class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <span class="text-slate-400 text-sm">🔊</span>
+                    <span id="volume-display" class="text-white text-sm font-medium w-10 text-right">70%</span>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="snoozeAlert(5)" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors">
+                        ⏰ Snooze 5m
+                    </button>
+                    <button onclick="snoozeAlert(15)" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors">
+                        ⏰ Snooze 15m
+                    </button>
+                    <button onclick="dismissAlert()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
+                        ✓ Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal --><div id="eventModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-800 p-6 w-full max-w-md border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white">New Event</h3>
+                <button onclick="closeEventModal()" class="w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Event Title</label>
+                    <input type="text" id="eventTitle" placeholder="Enter event title..." class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Calendar</label>
+                    <select id="eventCalendar" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Date</label>
+                    <input type="date" id="eventDate" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Start Time</label>
+                        <input type="time" id="eventStartTime" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">End Time</label>
+                        <input type="time" id="eventEndTime" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Recurring Event Options -->
+                <div class="border-t border-slate-600 pt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="eventRecurring" onchange="toggleRecurringOptions()" class="w-5 h-5 bg-slate-700 border-slate-600 text-indigo-600 focus:ring-indigo-500 focus:ring-2">
+                        <span class="text-sm font-medium text-slate-400">Repeat this event</span>
+                    </label>
+
+                    <div id="recurringOptions" class="hidden mt-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">Repeat</label>
+                            <select id="eventRecurrenceType" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="biweekly">Every 2 Weeks</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">End After</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <select id="eventRecurrenceEndType" onchange="toggleRecurrenceEndType()" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="occurrences" selected>Occurrences</option>
+                                        <option value="date">End Date</option>
+                                    </select>
+                                </div>
+                                <div id="recurrenceOccurrencesDiv">
+                                    <input type="number" id="eventRecurrenceOccurrences" value="10" min="1" max="365" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div id="recurrenceEndDateDiv" class="hidden col-span-2">
+                                    <input type="date" id="eventRecurrenceEndDate" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="createEventBtn" onclick="submitNewEvent()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                    Create Event
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventDetailsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-800 p-6 w-full max-w-md border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white">Event Details</h3>
+                <button onclick="closeEventDetailsModal()" class="w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="eventDetailsContent" class="space-y-4">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="flex min-h-screen">
+        <!-- Left Sidebar -->
+        <div id="sidebar" class="w-20 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 flex flex-col items-center py-8 gap-2 theme-transition">
+            <div class="w-12 h-12 bg-indigo-600 flex items-center justify-center mb-8">
+                <span class="text-white font-bold text-xl">S</span>
+            </div>
+
+            <button onclick="setActiveTab('calendar')" id="btn-calendar" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-indigo-600 text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </button>
+
+            <button onclick="setActiveTab('todos')" id="btn-todos" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+            </button>
+
+            <button onclick="setActiveTab('controls')" id="btn-controls" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+
+            <div class="flex-1"></div>
+
+            <button onclick="refreshData()" id="refresh-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+
+            <button onclick="toggleTheme()" id="theme-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-2xl" title="Toggle theme">
+                <span id="theme-icon">☀️</span>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col p-6 overflow-hidden">
+            <!-- Weather and Time Header -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-8">
+                    <!-- Weather -->
+                    <div class="flex items-center gap-3">
+                        <div id="weather-icon" class="text-5xl">🌡️</div>
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span id="weather-temp" class="text-3xl font-light theme-text">--°</span>
+                                <span id="weather-condition" class="text-sm theme-text-muted">Loading...</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs theme-text-muted mt-1">
+                                <span id="weather-hilo">H: --° L: --°</span>
+                                <span id="weather-extra"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sunrise/Sunset -->
+                    <div class="flex items-center gap-4 pl-6 border-l border-slate-700/50">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🌅</span>
+                            <div>
+                                <div class="text-[10px] theme-text-muted uppercase">Sunrise</div>
+                                <div id="sunrise-time" class="text-sm font-medium theme-text">--:--</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🌇</span>
+                            <div>
+                                <div class="text-[10px] theme-text-muted uppercase">Sunset</div>
+                                <div id="sunset-time" class="text-sm font-medium theme-text">--:--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prayer Times -->
+                    <div class="flex items-center gap-3 pl-6 border-l border-slate-700/50">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🕌</span>
+                            <div>
+                                <div class="text-[10px] theme-text-muted uppercase">Fajr</div>
+                                <div id="prayer-fajr" class="text-sm font-medium theme-text">--:--</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Dhuhr</div>
+                            <div id="prayer-dhuhr" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Asr</div>
+                            <div id="prayer-asr" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Maghrib</div>
+                            <div id="prayer-maghrib" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Isha</div>
+                            <div id="prayer-isha" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time -->
+                <div class="text-right">
+                    <div id="current-time" class="text-5xl font-light theme-text tracking-tight">--:--</div>
+                    <div id="current-date" class="theme-text-muted text-sm mt-1">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="main-content" class="flex-1 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden theme-transition">
+
+                <!-- Calendar Tab -->
+                <div id="tab-calendar" class="h-full flex flex-col">
+                    <div id="calendar-header" class="p-6 border-b border-slate-700/50 flex justify-between items-center theme-transition">
+                        <div class="flex items-center gap-4">
+                            <h2 id="calendar-title" class="text-2xl font-semibold theme-text">January 2026</h2>
+                            <div class="flex gap-1">
+                                <button onclick="navigateMonth(-1)" class="nav-btn w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white theme-transition">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                                <button onclick="navigateMonth(1)" class="nav-btn w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white theme-transition">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <!-- Calendar Legend (dynamic toggles) -->
+                            <div id="calendar-legend" class="flex items-center gap-3 mr-4">
+                                <!-- Populated dynamically -->
+                            </div>
+
+                            <button onclick="openEventModal()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>Add Event</span>
+                            </button>
+
+                            <div id="view-btn-bg" class="flex gap-1 bg-slate-900/50 p-1">
+                                <button onclick="setView('month')" id="view-month" class="view-btn px-5 py-2 text-sm font-medium bg-indigo-600 text-white">Month</button>
+                                <button onclick="setView('week')" id="view-week" class="view-btn px-5 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50">Week</button>
+                                <button onclick="setView('day')" id="view-day" class="view-btn px-5 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50">Day</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="calendar-content" class="flex-1 p-6 overflow-auto">
+                        <!-- Calendar grid will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Todos Tab -->
+                <div id="tab-todos" class="h-full flex flex-col hidden">
+                    <div class="p-4 border-b border-slate-700/50">
+                        <h2 class="text-2xl font-semibold text-white">Tasks</h2>
+                    </div>
+                    <div id="todos-container" class="flex-1 p-4 overflow-auto">
+                        <div id="todos-grid" class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                            <!-- Todo lists will be rendered here as vertical sections -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Tab (Home Assistant Dashboard) -->
+                <div id="tab-controls" class="h-full hidden">
+                    <iframe src="dashboard.html" class="controls-frame"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentDate = new Date();
+        let currentView = 'month';
+        let activeTab = 'calendar';
+        let events = [];
+        let isDarkMode = true;
+
+        // Calendar visibility state
+        let availableCalendars = []; // Dynamically fetched from HA
+        let visibleCalendars = new Set(); // Calendars currently shown
+
+        // Alert state
+        let alertedEvents = new Set(); // Track events we've already alerted
+        let snoozedEvents = {}; // Track snoozed events with their snooze-until time
+        let currentAlertEvent = null;
+        let prayerTimes = {}; // Store prayer times for alerts
+        let weatherForecast = {}; // Store weather forecast by date
+        const ALERT_MINUTES_BEFORE = 5; // Alert 5 minutes before event
+
+        // TTS and Alarm configuration
+        const TTS_PLATFORM = 'tts.piper'; // Home Assistant TTS platform
+        let alarmInterval = null; // Interval for looping alarm
+        let alarmAudioContext = null; // Shared audio context for alarm
+        let alarmGainNode = null; // Gain node for volume control
+        let currentTTSAudio = null; // Current TTS audio element
+        let alarmVolume = parseFloat(localStorage.getItem('alarmVolume')) || 0.7; // 0-1 range
+
+        // Default color palette for calendars
+        const DEFAULT_COLORS = [
+            '#6366f1', // Indigo
+            '#f59e0b', // Amber
+            '#10b981', // Emerald
+            '#ec4899', // Pink
+            '#8b5cf6', // Purple
+            '#06b6d4', // Cyan
+            '#ef4444', // Red
+            '#84cc16', // Lime
+        ];
+
+        let CALENDAR_COLORS = {};
+
+        // Todo lists - dynamically fetched from HA
+        let todoLists = [];
+        let allTodos = {};
+
+        // API Helper
+        async function fetchHA(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(endpoint, options);
+            return response.json();
+        }
+
+        // Load available calendars from Home Assistant
+        async function loadAvailableCalendars() {
+            try {
+                const states = await fetchHA('/api/states');
+                const calendarEntities = states.filter(s => s.entity_id.startsWith('calendar.'));
+
+                availableCalendars = calendarEntities.map((cal, index) => {
+                    const entityId = cal.entity_id;
+                    const friendlyName = cal.attributes.friendly_name || entityId.replace('calendar.', '').replace(/_/g, ' ');
+                    return {
+                        entity_id: entityId,
+                        name: friendlyName,
+                        color: DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+                    };
+                });
+
+                // Build CALENDAR_COLORS from available calendars
+                CALENDAR_COLORS = {};
+                availableCalendars.forEach(cal => {
+                    CALENDAR_COLORS[cal.entity_id] = cal.color;
+                });
+
+                // Load saved visibility from localStorage, default to all visible
+                const savedVisibility = localStorage.getItem('calendarVisibility');
+                if (savedVisibility) {
+                    const savedSet = new Set(JSON.parse(savedVisibility));
+                    // Only keep calendars that still exist
+                    visibleCalendars = new Set(availableCalendars.map(c => c.entity_id).filter(id => savedSet.has(id)));
+                } else {
+                    // Default: all calendars visible
+                    visibleCalendars = new Set(availableCalendars.map(c => c.entity_id));
+                }
+
+                renderCalendarLegend();
+                console.log(`Found ${availableCalendars.length} calendars:`, availableCalendars.map(c => c.entity_id));
+            } catch (e) {
+                console.error('Error loading calendars:', e);
+                // Fallback to empty
+                availableCalendars = [];
+                visibleCalendars = new Set();
+            }
+        }
+
+        // Load available todo lists from Home Assistant
+        async function loadAvailableTodoLists() {
+            try {
+                const states = await fetchHA('/api/states');
+                const todoEntities = states.filter(s => s.entity_id.startsWith('todo.'));
+
+                todoLists = todoEntities.map((todo, index) => {
+                    const entityId = todo.entity_id;
+                    const friendlyName = todo.attributes.friendly_name || entityId.replace('todo.', '').replace(/_/g, ' ');
+                    // Capitalize first letter of each word
+                    const name = friendlyName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    return {
+                        entity_id: entityId,
+                        name: name,
+                        color: DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+                    };
+                });
+
+                console.log(`Found ${todoLists.length} todo lists:`, todoLists.map(t => t.entity_id));
+            } catch (e) {
+                console.error('Error loading todo lists:', e);
+                todoLists = [];
+            }
+        }
+
+        // Toggle calendar visibility
+        function toggleCalendarVisibility(entityId) {
+            if (visibleCalendars.has(entityId)) {
+                visibleCalendars.delete(entityId);
+            } else {
+                visibleCalendars.add(entityId);
+            }
+            // Save to localStorage
+            localStorage.setItem('calendarVisibility', JSON.stringify([...visibleCalendars]));
+            renderCalendarLegend();
+            renderCalendar();
+        }
+
+        // Render the calendar legend with toggle switches
+        function renderCalendarLegend() {
+            const container = document.getElementById('calendar-legend');
+            if (!container) return;
+
+            container.innerHTML = availableCalendars.map(cal => {
+                const isVisible = visibleCalendars.has(cal.entity_id);
+                const opacity = isVisible ? 'opacity-100' : 'opacity-40';
+                return `
+                    <label class="flex items-center gap-1.5 cursor-pointer select-none ${opacity} hover:opacity-100 transition-opacity" title="Click to ${isVisible ? 'hide' : 'show'} ${cal.name}">
+                        <input type="checkbox"
+                            ${isVisible ? 'checked' : ''}
+                            onchange="toggleCalendarVisibility('${cal.entity_id}')"
+                            class="sr-only">
+                        <div class="w-3 h-3 rounded-sm" style="background-color: ${cal.color}"></div>
+                        <span class="text-xs text-slate-400">${cal.name}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        // Initialize
+        async function init() {
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Initial data load
+            await loadAvailableCalendars();
+            await loadAvailableTodoLists();
+            await loadWeather();
+            await loadCalendarEvents();
+            await loadTodos();
+            renderCalendar();
+
+            // Check for upcoming events every 30 seconds
+            checkUpcomingEvents();
+            setInterval(checkUpcomingEvents, 30000);
+
+            // Refresh all Home Assistant data every hour (3600000ms)
+            setInterval(async () => {
+                console.log('Hourly refresh triggered at', new Date().toLocaleTimeString());
+                await refreshData();
+            }, 3600000);
+
+            // Also refresh when page becomes visible again (e.g., switching tabs back)
+            document.addEventListener('visibilitychange', async () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('Page visible, refreshing data...');
+                    await refreshData();
+                    checkUpcomingEvents();
+                }
+            });
+
+            console.log('Event alert system initialized - checking every 30 seconds');
+        }
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        }
+
+        // Weather condition icons - using larger, more visible icons
+        const WEATHER_ICONS = {
+            'clear-night': '🌙',
+            'cloudy': '☁️',
+            'fog': '🌫️',
+            'hail': '🌨️',
+            'lightning': '⛈️',
+            'lightning-rainy': '⛈️',
+            'partlycloudy': '⛅',
+            'pouring': '🌧️',
+            'rainy': '🌧️',
+            'snowy': '❄️',
+            'snowy-rainy': '🌨️',
+            'sunny': '☀️',
+            'windy': '💨',
+            'windy-variant': '🌬️',
+            'exceptional': '⚠️'
+        };
+
+        // Get weather icon based on condition
+        function getWeatherIcon(condition) {
+            return WEATHER_ICONS[condition] || '🌡️';
+        }
+
+        // Play notification sound using Web Audio API
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Create a pleasant chime sound
+                const playTone = (freq, startTime, duration) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+
+                    // Envelope
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                };
+
+                const now = audioContext.currentTime;
+
+                // Play a pleasant 3-note chime
+                playTone(523.25, now, 0.2);       // C5
+                playTone(659.25, now + 0.15, 0.2); // E5
+                playTone(783.99, now + 0.3, 0.3);  // G5
+
+                // Resume audio context if suspended (autoplay policy)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                console.log('Notification sound played');
+            } catch (e) {
+                console.error('Error playing notification sound:', e);
+            }
+        }
+
+        // Text-to-Speech using Home Assistant Piper
+        async function speakText(text) {
+            try {
+                // Stop any currently playing TTS
+                if (currentTTSAudio) {
+                    currentTTSAudio.pause();
+                    currentTTSAudio = null;
+                }
+
+                // Get TTS audio URL from Home Assistant
+                const response = await fetch('/api/tts_get_url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        platform: TTS_PLATFORM,
+                        message: text
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`TTS API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const audioUrl = result.url; // Returns something like "/api/tts_proxy/..."
+
+                currentTTSAudio = new Audio(audioUrl);
+                currentTTSAudio.volume = alarmVolume; // Apply volume setting
+                currentTTSAudio.play();
+
+                currentTTSAudio.onended = () => {
+                    currentTTSAudio = null;
+                };
+
+                console.log('TTS played via Piper:', text);
+            } catch (e) {
+                console.error('TTS error (falling back to Web Speech):', e);
+                // Fallback to Web Speech API if Piper is not available
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    utterance.volume = alarmVolume;
+                    speechSynthesis.speak(utterance);
+                }
+            }
+        }
+
+        // Set alarm volume (0-100 from slider)
+        function setAlarmVolume(value) {
+            alarmVolume = value / 100; // Convert to 0-1 range
+            localStorage.setItem('alarmVolume', alarmVolume);
+
+            // Update display
+            const display = document.getElementById('volume-display');
+            if (display) display.textContent = `${value}%`;
+
+            // Update current TTS audio if playing
+            if (currentTTSAudio) {
+                currentTTSAudio.volume = alarmVolume;
+            }
+
+            // Update alarm gain node if alarm is playing
+            if (alarmGainNode) {
+                alarmGainNode.gain.setValueAtTime(alarmVolume * 0.5, alarmAudioContext.currentTime);
+            }
+
+            console.log('Alarm volume set to:', alarmVolume);
+        }
+
+        // Initialize volume slider from saved value
+        function initVolumeSlider() {
+            const slider = document.getElementById('alarm-volume');
+            const display = document.getElementById('volume-display');
+            if (slider) {
+                const value = Math.round(alarmVolume * 100);
+                slider.value = value;
+                if (display) display.textContent = `${value}%`;
+            }
+        }
+
+        // Start looping alarm sound
+        let alarmPlayCount = 0; // Track how many times alarm has played for gradual increase
+
+        function startAlarmLoop() {
+            // Stop any existing alarm first
+            stopAlarm();
+            alarmPlayCount = 0;
+
+            // Create audio context for alarm
+            alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create master gain node for volume control
+            alarmGainNode = alarmAudioContext.createGain();
+            alarmGainNode.connect(alarmAudioContext.destination);
+
+            // Start at 10% of target volume
+            alarmGainNode.gain.setValueAtTime(alarmVolume * 0.1, alarmAudioContext.currentTime);
+
+            const playAlarmTone = () => {
+                if (!alarmAudioContext || alarmAudioContext.state === 'closed') return;
+
+                try {
+                    const now = alarmAudioContext.currentTime;
+                    alarmPlayCount++;
+
+                    // Gradually increase volume over first 10 plays (20 seconds)
+                    const volumeMultiplier = Math.min(1, 0.1 + (alarmPlayCount * 0.09));
+                    alarmGainNode.gain.setValueAtTime(alarmVolume * volumeMultiplier * 0.5, now);
+
+                    // Soothing chime with soft attack and decay
+                    const playChime = (freq, startTime, duration) => {
+                        const oscillator = alarmAudioContext.createOscillator();
+                        const gainNode = alarmAudioContext.createGain();
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(alarmGainNode);
+
+                        oscillator.frequency.value = freq;
+                        oscillator.type = 'sine';
+
+                        // Soft envelope - gentle fade in and out
+                        gainNode.gain.setValueAtTime(0, startTime);
+                        gainNode.gain.linearRampToValueAtTime(0.8, startTime + 0.1); // Soft attack
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration); // Gentle decay
+
+                        oscillator.start(startTime);
+                        oscillator.stop(startTime + duration);
+                    };
+
+                    // Soothing pattern: gentle ascending chime (C-E-G-C major chord arpeggio)
+                    playChime(523.25, now, 0.8);          // C5
+                    playChime(659.25, now + 0.3, 0.7);    // E5
+                    playChime(783.99, now + 0.6, 0.6);    // G5
+                    playChime(1046.50, now + 0.9, 0.8);   // C6 (octave)
+
+                    if (alarmAudioContext.state === 'suspended') {
+                        alarmAudioContext.resume();
+                    }
+                } catch (e) {
+                    console.error('Error playing alarm tone:', e);
+                }
+            };
+
+            // Play immediately and then every 3 seconds (slower, more relaxed)
+            playAlarmTone();
+            alarmInterval = setInterval(playAlarmTone, 3000);
+
+            console.log('Alarm loop started at volume:', alarmVolume);
+        }
+
+        // Stop the looping alarm
+        function stopAlarm() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+
+            alarmPlayCount = 0; // Reset for next alarm
+
+            if (alarmAudioContext) {
+                try {
+                    alarmAudioContext.close();
+                } catch (e) {
+                    // Context might already be closed
+                }
+                alarmAudioContext = null;
+                alarmGainNode = null;
+            }
+
+            // Stop TTS if playing
+            if (currentTTSAudio) {
+                currentTTSAudio.pause();
+                currentTTSAudio = null;
+            }
+
+            // Stop Web Speech synthesis if active
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+            }
+
+            console.log('Alarm stopped');
+        }
+
+        // Weather
+        async function loadWeather() {
+            try {
+                const states = await fetchHA('/api/states');
+                const weather = states.find(s => s.entity_id === 'weather.forecast_home');
+
+                if (weather) {
+                    const temp = Math.round(weather.attributes.temperature);
+                    const condition = weather.state;
+                    const unit = weather.attributes.temperature_unit || '°F';
+                    const humidity = weather.attributes.humidity;
+                    const windSpeed = Math.round(weather.attributes.wind_speed);
+                    const windUnit = weather.attributes.wind_speed_unit || 'mph';
+
+                    document.getElementById('weather-temp').textContent = `${temp}${unit}`;
+
+                    // Format condition name
+                    const conditionText = condition.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    document.getElementById('weather-condition').textContent = conditionText;
+
+                    // Update weather icon based on condition
+                    document.getElementById('weather-icon').textContent = getWeatherIcon(condition);
+
+                    // Get forecast for high/low and store for calendar
+                    try {
+                        const forecastResponse = await fetch('/api/services/weather/get_forecasts?return_response', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                entity_id: 'weather.forecast_home',
+                                type: 'daily'
+                            })
+                        });
+                        const forecastData = await forecastResponse.json();
+                        if (forecastData.service_response && forecastData.service_response['weather.forecast_home']) {
+                            const forecasts = forecastData.service_response['weather.forecast_home'].forecast || [];
+
+                            // Store forecast by date for calendar display
+                            weatherForecast = {};
+                            forecasts.forEach(f => {
+                                const date = new Date(f.datetime);
+                                const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                                weatherForecast[dateKey] = {
+                                    condition: f.condition,
+                                    high: Math.round(f.temperature),
+                                    low: Math.round(f.templow),
+                                    icon: getWeatherIcon(f.condition)
+                                };
+                            });
+
+                            // Update today's high/low
+                            const todayForecast = forecasts[0];
+                            if (todayForecast) {
+                                const high = Math.round(todayForecast.temperature);
+                                const low = Math.round(todayForecast.templow);
+                                document.getElementById('weather-hilo').textContent = `H: ${high}° L: ${low}°`;
+                            }
+
+                            // Re-render calendar to show weather
+                            if (activeTab === 'calendar') {
+                                renderCalendar();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Forecast load error:', e);
+                    }
+
+                    // Update humidity/wind display
+                    const extraInfo = document.getElementById('weather-extra');
+                    if (extraInfo) {
+                        extraInfo.textContent = `💧 ${humidity}% | 💨 ${windSpeed} ${windUnit}`;
+                    }
+                }
+
+                // Sun data
+                const sun = states.find(s => s.entity_id === 'sun.sun');
+                if (sun) {
+                    const sunrise = new Date(sun.attributes.next_rising);
+                    const sunset = new Date(sun.attributes.next_setting);
+                    document.getElementById('sunrise-time').textContent = sunrise.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    document.getElementById('sunset-time').textContent = sunset.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                    // Auto theme based on sun position
+                    const isBelowHorizon = sun.state === 'below_horizon';
+                    if (isBelowHorizon !== isDarkMode) {
+                        setTheme(isBelowHorizon);
+                    }
+                }
+
+                // Prayer times
+                const prayerEntities = {
+                    fajr: states.find(s => s.entity_id === 'sensor.islamic_prayer_times_fajr_prayer'),
+                    dhuhr: states.find(s => s.entity_id === 'sensor.islamic_prayer_times_dhuhr_prayer'),
+                    asr: states.find(s => s.entity_id === 'sensor.islamic_prayer_times_asr_prayer'),
+                    maghrib: states.find(s => s.entity_id === 'sensor.islamic_prayer_times_maghrib_prayer'),
+                    isha: states.find(s => s.entity_id === 'sensor.islamic_prayer_times_isha_prayer')
+                };
+
+                // Store prayer times for alerts
+                prayerTimes = {};
+
+                for (const [prayer, entity] of Object.entries(prayerEntities)) {
+                    if (entity && entity.state) {
+                        const time = new Date(entity.state);
+                        prayerTimes[prayer] = time;
+
+                        const el = document.getElementById(`prayer-${prayer}`);
+                        if (el) {
+                            el.textContent = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Weather load error:', e);
+            }
+        }
+
+        // Theme switching
+        function setTheme(dark) {
+            isDarkMode = dark;
+            const root = document.documentElement;
+
+            if (dark) {
+                root.style.setProperty('--bg-primary', '#0f172a');
+                root.style.setProperty('--bg-secondary', '#1e293b');
+                root.style.setProperty('--bg-card', '#334155');
+                root.style.setProperty('--text-primary', '#ffffff');
+                root.style.setProperty('--text-secondary', '#94a3b8');
+                root.style.setProperty('--text-muted', '#64748b');
+                root.style.setProperty('--border-color', '#475569');
+            } else {
+                root.style.setProperty('--bg-primary', '#f8fafc');
+                root.style.setProperty('--bg-secondary', '#ffffff');
+                root.style.setProperty('--bg-card', '#f1f5f9');
+                root.style.setProperty('--text-primary', '#1e293b');
+                root.style.setProperty('--text-secondary', '#475569');
+                root.style.setProperty('--text-muted', '#94a3b8');
+                root.style.setProperty('--border-color', '#e2e8f0');
+            }
+
+            applyThemeClasses(dark);
+            console.log('Theme set to:', dark ? 'dark' : 'light');
+        }
+
+        function toggleTheme() {
+            setTheme(!isDarkMode);
+        }
+
+        function applyThemeClasses(dark) {
+            // Toggle root class
+            document.documentElement.classList.toggle('light', !dark);
+
+            // Body background
+            document.body.className = dark
+                ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen'
+                : 'bg-gradient-to-br from-blue-50 via-white to-slate-100 min-h-screen';
+
+            // Sidebar
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.className = dark
+                    ? 'w-20 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 flex flex-col items-center py-8 gap-2 theme-transition'
+                    : 'w-20 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col items-center py-8 gap-2 shadow-lg theme-transition';
+            }
+
+            // Sidebar buttons
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                if (!btn.classList.contains('bg-indigo-600')) {
+                    btn.className = btn.className.replace(/bg-slate-\d+\/\d+|bg-white|hover:bg-slate-\d+\/\d+|hover:bg-slate-\d+|text-slate-\d+|text-gray-\d+/g, '');
+                    if (dark) {
+                        btn.classList.add('bg-slate-800/50', 'hover:bg-slate-700/50', 'text-slate-400');
+                    } else {
+                        btn.classList.add('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600');
+                    }
+                }
+            });
+
+            // Sunrise/sunset border
+            document.querySelectorAll('.border-slate-700\\/50').forEach(el => {
+                if (el.classList.contains('border-l') || el.classList.contains('border-r')) {
+                    el.classList.toggle('border-slate-700/50', dark);
+                    el.classList.toggle('border-slate-300', !dark);
+                }
+            });
+
+            // Main content area
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.className = dark
+                    ? 'flex-1 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden theme-transition'
+                    : 'flex-1 bg-white/80 backdrop-blur-xl border border-slate-200 shadow-2xl overflow-hidden theme-transition';
+            }
+
+            // Calendar header
+            const calendarHeader = document.getElementById('calendar-header');
+            if (calendarHeader) {
+                calendarHeader.className = dark
+                    ? 'p-6 border-b border-slate-700/50 flex justify-between items-center theme-transition'
+                    : 'p-6 border-b border-slate-200 flex justify-between items-center theme-transition';
+            }
+
+            // Text elements
+            document.querySelectorAll('.text-white').forEach(el => {
+                if (!el.closest('.bg-indigo-600') && !el.closest('[style*="background"]')) {
+                    el.classList.toggle('text-white', dark);
+                    el.classList.toggle('text-slate-800', !dark);
+                }
+            });
+
+            document.querySelectorAll('.text-slate-400').forEach(el => {
+                el.classList.toggle('text-slate-400', dark);
+                el.classList.toggle('text-slate-500', !dark);
+            });
+
+            // Time display
+            const timeDisplay = document.getElementById('current-time');
+            if (timeDisplay) {
+                timeDisplay.className = dark
+                    ? 'text-5xl font-light text-white tracking-tight theme-text'
+                    : 'text-5xl font-light text-slate-800 tracking-tight theme-text';
+            }
+
+            const dateDisplay = document.getElementById('current-date');
+            if (dateDisplay) {
+                dateDisplay.className = dark
+                    ? 'text-slate-400 text-sm mt-1 theme-text-muted'
+                    : 'text-slate-500 text-sm mt-1 theme-text-muted';
+            }
+
+            // Navigation buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = dark
+                    ? 'w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white theme-transition'
+                    : 'w-10 h-10 bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 theme-transition';
+            });
+
+            // View buttons background
+            const viewBtnBg = document.getElementById('view-btn-bg');
+            if (viewBtnBg) {
+                viewBtnBg.className = dark
+                    ? 'flex gap-1 bg-slate-900/50 p-1'
+                    : 'flex gap-1 bg-slate-100 p-1';
+            }
+
+            // Update theme icon
+            const themeIcon = document.getElementById('theme-icon');
+            if (themeIcon) {
+                themeIcon.textContent = dark ? '☀️' : '🌙';
+            }
+
+            // Re-render calendar to apply new theme
+            if (typeof renderCalendar === 'function') {
+                renderCalendar();
+            }
+        }
+
+        // Calendar Events
+        async function loadCalendarEvents() {
+            try {
+                const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
+
+                // Format dates for HA API (local time without timezone)
+                const formatDate = (d) => {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00:00`;
+                };
+                const formatEndDate = (d) => {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T23:59:59`;
+                };
+
+                // Use dynamically fetched calendars, only load visible ones
+                const calendarsToLoad = availableCalendars.map(c => c.entity_id);
+                events = [];
+
+                for (const cal of calendarsToLoad) {
+                    try {
+                        const response = await fetch(`/api/services/calendar/get_events?return_response`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                entity_id: cal,
+                                start_date_time: formatDate(start),
+                                end_date_time: formatEndDate(end)
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.service_response && result.service_response[cal]) {
+                            const calEvents = result.service_response[cal].events || [];
+                            calEvents.forEach(e => {
+                                events.push({
+                                    ...e,
+                                    calendar: cal,
+                                    color: CALENDAR_COLORS[cal],
+                                    startDate: new Date(e.start),
+                                    endDate: new Date(e.end)
+                                });
+                            });
+                        }
+                    } catch (err) {
+                        console.error(`Error loading ${cal}:`, err);
+                    }
+                }
+
+                console.log(`Loaded ${events.length} events`);
+                renderCalendar();
+            } catch (e) {
+                console.error('Calendar load error:', e);
+            }
+        }
+
+        // Todos - Load all lists
+        async function loadTodos() {
+            try {
+                // Fetch all todo lists in parallel
+                const promises = todoLists.map(async (list) => {
+                    try {
+                        const result = await fetchHA(`/api/services/todo/get_items?return_response`, 'POST', {
+                            entity_id: list.entity_id
+                        });
+                        if (result.service_response && result.service_response[list.entity_id]) {
+                            return { listId: list.entity_id, items: result.service_response[list.entity_id].items || [] };
+                        }
+                        return { listId: list.entity_id, items: [] };
+                    } catch (err) {
+                        console.error(`Error loading ${list.entity_id}:`, err);
+                        return { listId: list.entity_id, items: [] };
+                    }
+                });
+
+                const results = await Promise.all(promises);
+                allTodos = {};
+                results.forEach(r => {
+                    allTodos[r.listId] = r.items;
+                });
+
+                renderTodos();
+            } catch (e) {
+                console.error('Todos load error:', e);
+            }
+        }
+
+        // Render all todo lists as vertical sections
+        function renderTodos() {
+            const container = document.getElementById('todos-grid');
+            if (!container) return;
+
+            container.innerHTML = todoLists.map(list => {
+                const items = allTodos[list.entity_id] || [];
+                const completed = items.filter(t => t.status === 'completed').length;
+                const total = items.length;
+                const progressPercent = total > 0 ? (completed / total) * 100 : 0;
+
+                return `
+                    <div class="flex flex-col bg-slate-800/50 border border-slate-700/50 overflow-hidden h-full" style="min-height: 300px; max-height: calc(100vh - 200px);">
+                        <!-- List Header -->
+                        <div class="p-3 border-b border-slate-700/50 flex items-center justify-between" style="background-color: ${list.color}20;">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-sm" style="background-color: ${list.color}"></div>
+                                <span class="font-semibold text-white">${list.name}</span>
+                                <span class="text-xs text-slate-400">(${completed}/${total})</span>
+                            </div>
+                        </div>
+
+                        <!-- Add Task Input -->
+                        <div class="p-2 border-b border-slate-700/30">
+                            <div class="flex gap-2">
+                                <input type="text"
+                                    id="add-todo-${list.entity_id.replace('.', '-')}"
+                                    placeholder="Add task..."
+                                    class="flex-1 px-3 py-2 bg-slate-700/50 border border-slate-600/50 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                                    style="--tw-ring-color: ${list.color}"
+                                    onkeypress="if(event.key==='Enter') addTodoToList('${list.entity_id}', this.value, this)">
+                                <button onclick="addTodoFromInput('${list.entity_id}')"
+                                    class="px-3 py-2 text-white text-sm font-medium hover:opacity-80 transition-opacity"
+                                    style="background-color: ${list.color}">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="h-1 bg-slate-700/50">
+                            <div class="h-full transition-all duration-300" style="width: ${progressPercent}%; background-color: ${list.color}"></div>
+                        </div>
+
+                        <!-- Todo Items -->
+                        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                            ${items.length === 0 ? `
+                                <div class="text-center py-8 text-slate-500 text-sm">No tasks</div>
+                            ` : items.map((todo, index) => {
+                                const isCompleted = todo.status === 'completed';
+                                return `
+                                    <div class="todo-item p-2 cursor-pointer rounded ${isCompleted ? 'bg-slate-700/10 opacity-50' : 'bg-slate-700/30 hover:bg-slate-700/50'}"
+                                         onclick="toggleTodo('${list.entity_id}', '${todo.uid}', ${isCompleted})"
+                                         style="animation: fadeIn 0.2s ease-out forwards; animation-delay: ${index * 30}ms">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-5 h-5 border-2 flex-shrink-0 flex items-center justify-center rounded-sm ${isCompleted ? 'border-transparent' : ''}"
+                                                 style="${isCompleted ? `background-color: ${list.color}` : `border-color: ${list.color}50`}">
+                                                ${isCompleted ? '<svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm ${isCompleted ? 'text-slate-500 line-through' : 'text-white'} truncate">${todo.summary}</div>
+                                            </div>
+                                            <button onclick="event.stopPropagation(); deleteTodo('${list.entity_id}', '${todo.uid}')"
+                                                class="w-6 h-6 flex-shrink-0 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleTodo(listId, uid, isCompleted) {
+            try {
+                await fetchHA('/api/services/todo/update_item', 'POST', {
+                    entity_id: listId,
+                    item: uid,
+                    status: isCompleted ? 'needs_action' : 'completed'
+                });
+                await loadTodos();
+            } catch (e) {
+                console.error('Toggle todo error:', e);
+            }
+        }
+
+        async function deleteTodo(listId, uid) {
+            try {
+                await fetchHA('/api/services/todo/remove_item', 'POST', {
+                    entity_id: listId,
+                    item: uid
+                });
+                await loadTodos();
+            } catch (e) {
+                console.error('Delete todo error:', e);
+            }
+        }
+
+        function addTodoFromInput(listId) {
+            const inputId = `add-todo-${listId.replace('.', '-')}`;
+            const input = document.getElementById(inputId);
+            if (input && input.value.trim()) {
+                addTodoToList(listId, input.value.trim(), input);
+            }
+        }
+
+        async function addTodoToList(listId, text, inputElement) {
+            if (!text || !text.trim()) return;
+            try {
+                await fetchHA('/api/services/todo/add_item', 'POST', {
+                    entity_id: listId,
+                    item: text.trim()
+                });
+                if (inputElement) {
+                    inputElement.value = '';
+                }
+                await loadTodos();
+            } catch (e) {
+                console.error('Add todo error:', e);
+            }
+        }
+
+        // Calendar Rendering
+        function renderCalendar() {
+            const title = currentView === 'day'
+                ? currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+                : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            document.getElementById('calendar-title').textContent = title;
+
+            const container = document.getElementById('calendar-content');
+
+            if (currentView === 'month') {
+                renderMonthView(container);
+            } else if (currentView === 'week') {
+                renderWeekView(container);
+            } else {
+                renderDayView(container);
+            }
+        }
+
+        function renderMonthView(container) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            const days = [];
+            for (let i = firstDay - 1; i >= 0; i--) {
+                days.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
+            }
+            for (let i = 1; i <= daysInMonth; i++) {
+                days.push({ day: i, isCurrentMonth: true });
+            }
+            const remaining = 42 - days.length;
+            for (let i = 1; i <= remaining; i++) {
+                days.push({ day: i, isCurrentMonth: false });
+            }
+
+            const today = new Date();
+
+            const dark = isDarkMode;
+            container.innerHTML = `
+                <div class="h-full">
+                    <div class="grid grid-cols-7 gap-2 mb-4">
+                        ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d =>
+                            `<div class="text-center ${dark ? 'text-slate-400' : 'text-slate-500'} text-sm font-medium py-2">${d}</div>`
+                        ).join('')}
+                    </div>
+                    <div class="grid grid-cols-7 gap-2">
+                        ${days.map((item, index) => {
+                            const dayEvents = item.isCurrentMonth ? getEventsForDay(item.day) : [];
+                            const isToday = item.isCurrentMonth && item.day === today.getDate() &&
+                                month === today.getMonth() && year === today.getFullYear();
+
+                            // Get weather for this day
+                            const dateKey = `${year}-${month}-${item.day}`;
+                            const dayWeather = item.isCurrentMonth ? weatherForecast[dateKey] : null;
+
+                            const cellBg = item.isCurrentMonth
+                                ? (dark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-50 hover:bg-slate-100')
+                                : (dark ? 'bg-slate-800/20' : 'bg-slate-100/50');
+
+                            const dayTextColor = isToday
+                                ? 'bg-indigo-600 text-white'
+                                : item.isCurrentMonth
+                                    ? (dark ? 'text-white' : 'text-slate-800')
+                                    : (dark ? 'text-slate-600' : 'text-slate-400');
+
+                            return `
+                                <div onclick="handleDayClick(${item.day}, ${item.isCurrentMonth})"
+                                     class="day-cell min-h-24 p-2 cursor-pointer ${cellBg}">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <div class="text-sm font-medium w-7 h-7 flex items-center justify-center ${dayTextColor}">${item.day}</div>
+                                        ${dayWeather ? `
+                                            <div class="text-right">
+                                                <div class="text-base leading-none">${dayWeather.icon}</div>
+                                                <div class="text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}">${dayWeather.high}°/${dayWeather.low}°</div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <div class="space-y-1">
+                                        ${dayEvents.slice(0, 2).map((e, idx) =>
+                                            `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="event-badge text-xs px-2 py-1 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`
+                                        ).join('')}
+                                        ${dayEvents.length > 2 ? `<div class="text-xs ${dark ? 'text-slate-400' : 'text-slate-500'} pl-2">+${dayEvents.length - 2} more</div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderWeekView(container) {
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+
+            const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                return date;
+            });
+
+            const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+            const today = new Date();
+
+            container.innerHTML = `
+                <div class="h-full">
+                    <div class="grid grid-cols-8 gap-2 mb-4">
+                        <div class="w-16"></div>
+                        ${weekDays.map(date => {
+                            const isToday = date.toDateString() === today.toDateString();
+                            return `
+                                <div class="text-center cursor-pointer" onclick="goToDay(${date.getTime()})">
+                                    <div class="text-slate-400 text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                    <div class="text-lg font-semibold mt-1 w-10 h-10 mx-auto flex items-center justify-center ${isToday ? 'bg-indigo-600 text-white' : 'text-white hover:bg-slate-700/30'}">${date.getDate()}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="space-y-1 overflow-auto" style="max-height: calc(100% - 80px)">
+                        ${hours.map(hour => `
+                            <div class="grid grid-cols-8 gap-2 min-h-16">
+                                <div class="text-slate-400 text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
+                                ${weekDays.map(date => {
+                                    const dayEvents = getEventsForDateTime(date, hour);
+                                    return `
+                                        <div class="bg-slate-700/20 border border-slate-700/30 p-1 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
+                                            ${dayEvents.map(e => `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDayView(container) {
+            const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+
+            container.innerHTML = `
+                <div class="h-full">
+                    <div class="text-center mb-4 pb-4 border-b border-slate-700/50">
+                        <div class="text-slate-400 text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                        <div class="text-4xl font-light text-white mt-1">${currentDate.getDate()}</div>
+                    </div>
+                    <div class="space-y-1 overflow-auto" style="max-height: calc(100% - 120px)">
+                        ${hours.map(hour => {
+                            const dayEvents = getEventsForDateTime(currentDate, hour, true);
+                            return `
+                                <div class="flex gap-4 min-h-16">
+                                    <div class="text-slate-400 text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
+                                    <div class="flex-1 bg-slate-700/20 border border-slate-700/30 p-2 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${currentDate.getTime()}, ${hour})">
+                                        ${dayEvents.map(e => `
+                                            <div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="p-2 text-white text-sm mb-1 cursor-pointer hover:opacity-80 transition-opacity" style="background-color: ${e.color}">
+                                                <div class="font-medium">${e.summary}</div>
+                                                <div class="text-white/70 text-xs">${formatEventTime(e)}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function getEventsForDay(day) {
+            return events.filter(e => {
+                // Filter by visibility
+                if (!visibleCalendars.has(e.calendar)) return false;
+
+                const eventDate = e.startDate;
+                return eventDate.getDate() === day &&
+                       eventDate.getMonth() === currentDate.getMonth() &&
+                       eventDate.getFullYear() === currentDate.getFullYear();
+            });
+        }
+
+        function getEventsForDateTime(date, hour, startOnly = false) {
+            return events.filter(e => {
+                // Filter by visibility
+                if (!visibleCalendars.has(e.calendar)) return false;
+
+                const eventDate = e.startDate;
+                const eventEndDate = e.endDate;
+                const eventHour = eventDate.getHours();
+                const eventEndHour = eventEndDate.getHours();
+
+                const sameDay = eventDate.getDate() === date.getDate() &&
+                               eventDate.getMonth() === date.getMonth() &&
+                               eventDate.getFullYear() === date.getFullYear();
+
+                if (!sameDay) return false;
+
+                if (startOnly) {
+                    return eventHour === hour;
+                }
+                return hour >= eventHour && hour < eventEndHour;
+            });
+        }
+
+        function formatHour(hour) {
+            const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            return `${h}:00 ${ampm}`;
+        }
+
+        function formatEventTime(event) {
+            const start = event.startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const end = event.endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            return `${start} - ${end}`;
+        }
+
+        // Navigation
+        function navigateMonth(direction) {
+            if (currentView === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + direction);
+            } else if (currentView === 'week') {
+                currentDate.setDate(currentDate.getDate() + (direction * 7));
+            } else {
+                currentDate.setDate(currentDate.getDate() + direction);
+            }
+            currentDate = new Date(currentDate);
+            loadCalendarEvents();
+        }
+
+        function handleDayClick(day, isCurrentMonth) {
+            if (isCurrentMonth) {
+                currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                setView('day');
+            }
+        }
+
+        function goToDay(timestamp) {
+            currentDate = new Date(timestamp);
+            setView('day');
+        }
+
+        // Views
+        function setView(view) {
+            currentView = view;
+            ['month', 'week', 'day'].forEach(v => {
+                const btn = document.getElementById(`view-${v}`);
+                if (v === view) {
+                    btn.className = 'view-btn px-5 py-2 text-sm font-medium bg-indigo-600 text-white';
+                } else {
+                    btn.className = 'view-btn px-5 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50';
+                }
+            });
+            renderCalendar();
+        }
+
+        // Tabs
+        function setActiveTab(tab) {
+            activeTab = tab;
+            ['calendar', 'todos', 'controls'].forEach(t => {
+                const tabEl = document.getElementById(`tab-${t}`);
+                const btnEl = document.getElementById(`btn-${t}`);
+
+                if (t === tab) {
+                    tabEl.classList.remove('hidden');
+                    btnEl.className = 'sidebar-btn w-14 h-14 flex items-center justify-center bg-indigo-600 text-white';
+                } else {
+                    tabEl.classList.add('hidden');
+                    btnEl.className = 'sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white';
+                }
+            });
+        }
+
+        // Event Modal
+        function formatLocalDate(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Populate calendar dropdown with available calendars
+        function populateCalendarDropdown() {
+            const select = document.getElementById('eventCalendar');
+            select.innerHTML = availableCalendars.map(cal =>
+                `<option value="${cal.entity_id}">${cal.name}</option>`
+            ).join('');
+        }
+
+        function openEventModal() {
+            populateCalendarDropdown();
+            const dateStr = formatLocalDate(currentDate);
+            console.log('Opening modal with date:', dateStr);
+            document.getElementById('eventDate').value = dateStr;
+            document.getElementById('eventStartTime').value = '09:00';
+            document.getElementById('eventEndTime').value = '10:00';
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('createEventBtn').disabled = false;
+            document.getElementById('createEventBtn').textContent = 'Create Event';
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+
+        function openEventModalForTime(timestamp, hour) {
+            populateCalendarDropdown();
+            const date = new Date(timestamp);
+            const dateStr = formatLocalDate(date);
+            console.log('Opening modal for time with date:', dateStr, 'hour:', hour);
+            document.getElementById('eventDate').value = dateStr;
+            document.getElementById('eventStartTime').value = `${hour.toString().padStart(2, '0')}:00`;
+            document.getElementById('eventEndTime').value = `${(hour + 1).toString().padStart(2, '0')}:00`;
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('createEventBtn').disabled = false;
+            document.getElementById('createEventBtn').textContent = 'Create Event';
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.add('hidden');
+
+            // Reset form fields
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventRecurring').checked = false;
+            document.getElementById('recurringOptions').classList.add('hidden');
+            document.getElementById('eventRecurrenceType').value = 'weekly';
+            document.getElementById('eventRecurrenceEndType').value = 'occurrences';
+            document.getElementById('eventRecurrenceOccurrences').value = '10';
+            document.getElementById('recurrenceOccurrencesDiv').classList.remove('hidden');
+            document.getElementById('recurrenceEndDateDiv').classList.add('hidden');
+        }
+
+        // Event Details Modal Functions
+        let currentEventDetails = null;
+
+        function isRecurringEvent(event) {
+            // Check if event has RRULE (native recurring event)
+            return event.rrule && event.rrule.length > 0;
+        }
+
+        function getRecurringEventId(event) {
+            // For RRULE events, use the UID which is common to all instances
+            return event.uid || event.recurrence_id || null;
+        }
+
+        async function showEventDetails(event) {
+            currentEventDetails = event;
+            const isPartOfSeries = isRecurringEvent(event);
+
+            const modal = document.getElementById('eventDetailsModal');
+            const content = document.getElementById('eventDetailsContent');
+
+            const startTime = event.startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const endTime = event.endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const dateStr = event.startDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            // Parse RRULE to get human-readable recurrence info
+            let recurrenceInfo = '';
+            if (isPartOfSeries && event.rrule) {
+                recurrenceInfo = parseRRule(event.rrule);
+            }
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <div class="inline-block px-3 py-1 text-xs font-medium text-white mb-3" style="background-color: ${event.color}">
+                            ${event.calendar.split('.')[1].toUpperCase()}
+                        </div>
+                        <h4 class="text-2xl font-semibold text-white">${event.summary}</h4>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></path></svg>
+                            <span>${dateStr}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></path></svg>
+                            <span>${startTime} - ${endTime}</span>
+                        </div>
+                        ${isPartOfSeries ? `
+                            <div class="flex items-center gap-2 text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></path></svg>
+                                <span>Recurring: ${recurrenceInfo}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="border-t border-slate-700 pt-4 space-y-2">
+                        ${isPartOfSeries ? `
+                            <button onclick="deleteEvent(false)" class="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium border border-red-600/30">
+                                Delete This Occurrence Only
+                            </button>
+                            <button onclick="deleteEvent(true)" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-medium">
+                                Delete Entire Series
+                            </button>
+                        ` : `
+                            <button onclick="deleteEvent(false)" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-medium">
+                                Delete Event
+                            </button>
+                        `}
+                        <button onclick="closeEventDetailsModal()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        function parseRRule(rrule) {
+            // Parse RRULE to human-readable format
+            if (!rrule) return '';
+
+            const parts = rrule.replace('RRULE:', '').split(';');
+            let freq = '', interval = '', count = '', until = '';
+
+            parts.forEach(part => {
+                const [key, value] = part.split('=');
+                if (key === 'FREQ') {
+                    freq = value.toLowerCase();
+                } else if (key === 'INTERVAL') {
+                    interval = value;
+                } else if (key === 'COUNT') {
+                    count = value;
+                } else if (key === 'UNTIL') {
+                    until = value;
+                }
+            });
+
+            let text = '';
+            if (freq === 'DAILY') text = 'Daily';
+            else if (freq === 'WEEKLY') {
+                text = interval === '2' ? 'Every 2 weeks' : 'Weekly';
+            }
+            else if (freq === 'MONTHLY') text = 'Monthly';
+
+            if (count) text += `, ${count} times`;
+            else if (until) {
+                const year = until.substring(0, 4);
+                const month = until.substring(4, 6);
+                const day = until.substring(6, 8);
+                text += ` until ${month}/${day}/${year}`;
+            }
+
+            return text;
+        }
+
+        function closeEventDetailsModal() {
+            document.getElementById('eventDetailsModal').classList.add('hidden');
+            currentEventDetails = null;
+        }
+
+        async function deleteEvent(deleteSeries) {
+            if (!currentEventDetails) return;
+
+            const isRecurring = isRecurringEvent(currentEventDetails);
+            const confirmMsg = (deleteSeries && isRecurring)
+                ? 'Delete the entire recurring series?'
+                : isRecurring
+                    ? 'Delete only this occurrence?'
+                    : 'Delete this event?';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const payload = {
+                    entity_id: currentEventDetails.calendar,
+                    uid: currentEventDetails.uid
+                };
+
+                // For recurring events
+                if (isRecurring && !deleteSeries) {
+                    // Delete only this occurrence by specifying the recurrence_id
+                    payload.recurrence_id = currentEventDetails.start;
+                    payload.recurrence_range = 'THIS';
+                } else if (isRecurring && deleteSeries) {
+                    // Delete entire series
+                    payload.recurrence_range = 'ALL';
+                }
+
+                console.log('Deleting event with payload:', payload);
+
+                const response = await fetch(`/api/services/calendar/delete_event`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                closeEventDetailsModal();
+                await loadCalendarEvents();
+
+                alert((deleteSeries && isRecurring) ? 'Successfully deleted entire series' : 'Event deleted successfully');
+
+            } catch (e) {
+                console.error('Delete event error:', e);
+                alert('Failed to delete event: ' + e.message + '\n\nNote: You may need to delete this event through the Home Assistant UI or your calendar provider (Google Calendar, etc.)');
+            }
+        }
+
+
+        function toggleRecurringOptions() {
+            const checkbox = document.getElementById('eventRecurring');
+            const options = document.getElementById('recurringOptions');
+            options.classList.toggle('hidden', !checkbox.checked);
+        }
+
+        function toggleRecurrenceEndType() {
+            const endType = document.getElementById('eventRecurrenceEndType').value;
+            const occurrencesDiv = document.getElementById('recurrenceOccurrencesDiv');
+            const endDateDiv = document.getElementById('recurrenceEndDateDiv');
+
+            if (endType === 'occurrences') {
+                occurrencesDiv.classList.remove('hidden');
+                endDateDiv.classList.add('hidden');
+            } else {
+                occurrencesDiv.classList.add('hidden');
+                endDateDiv.classList.remove('hidden');
+            }
+        }
+
+        function generateRRule(startDate, recurrenceType, endType, occurrences, endDate) {
+            // Generate RRULE (RFC 5545) for native recurring events
+            let rrule = 'RRULE:';
+
+            switch (recurrenceType) {
+                case 'daily':
+                    rrule += 'FREQ=DAILY';
+                    break;
+                case 'weekly':
+                    rrule += 'FREQ=WEEKLY';
+                    break;
+                case 'biweekly':
+                    rrule += 'FREQ=WEEKLY;INTERVAL=2';
+                    break;
+                case 'monthly':
+                    rrule += 'FREQ=MONTHLY';
+                    break;
+            }
+
+            if (endType === 'occurrences') {
+                rrule += `;COUNT=${occurrences}`;
+            } else if (endType === 'date') {
+                // Format: YYYYMMDD
+                const endDateObj = new Date(endDate);
+                const year = endDateObj.getFullYear();
+                const month = String(endDateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(endDateObj.getDate()).padStart(2, '0');
+                rrule += `;UNTIL=${year}${month}${day}T235959Z`;
+            }
+
+            return rrule;
+        }
+
+        async function submitNewEvent() {
+            console.log('submitNewEvent called');
+
+            const title = document.getElementById('eventTitle').value.trim();
+            const calendar = document.getElementById('eventCalendar').value;
+            const date = document.getElementById('eventDate').value;
+            const startTime = document.getElementById('eventStartTime').value;
+            const endTime = document.getElementById('eventEndTime').value;
+            const isRecurring = document.getElementById('eventRecurring').checked;
+
+            console.log('Form values:', { title, calendar, date, startTime, endTime, isRecurring });
+
+            if (!title) {
+                alert('Please enter an event title');
+                return;
+            }
+
+            if (!date || !startTime || !endTime) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const createBtn = document.getElementById('createEventBtn');
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+
+            try {
+                // Build the event payload
+                const payload = {
+                    entity_id: calendar,
+                    summary: title,
+                    start_date_time: `${date}T${startTime}:00`,
+                    end_date_time: `${date}T${endTime}:00`
+                };
+
+                // Handle recurring events with RRULE
+                if (isRecurring) {
+                    const recurrenceType = document.getElementById('eventRecurrenceType').value;
+                    const endType = document.getElementById('eventRecurrenceEndType').value;
+                    const occurrences = parseInt(document.getElementById('eventRecurrenceOccurrences').value);
+                    const endDate = document.getElementById('eventRecurrenceEndDate').value;
+
+                    // Generate RRULE string
+                    const rrule = generateRRule(date, recurrenceType, endType, occurrences, endDate);
+                    payload.rrule = rrule;
+
+                    createBtn.textContent = 'Creating recurring event...';
+                    console.log('Creating recurring event with RRULE:', rrule);
+                } else {
+                    createBtn.textContent = 'Creating event...';
+                }
+
+                // Create the event
+                const response = await fetch('/api/services/calendar/create_event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.text();
+                console.log('Response body:', result);
+
+                closeEventModal();
+
+                // Navigate to the date of the event
+                currentDate = new Date(date + 'T12:00:00');
+
+                // Reload calendar events
+                await loadCalendarEvents();
+
+                console.log('Event created successfully');
+
+                if (isRecurring) {
+                    alert('Successfully created recurring event!');
+                }
+
+            } catch (e) {
+                console.error('Create event error:', e);
+                alert('Failed to create event: ' + e.message);
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Event';
+            }
+        }
+
+        // Refresh
+        async function refreshData() {
+            const btn = document.getElementById('refresh-btn');
+            btn.querySelector('svg').classList.add('loading-spin');
+
+            // Refresh entity lists first
+            await Promise.all([
+                loadAvailableCalendars(),
+                loadAvailableTodoLists()
+            ]);
+
+            await Promise.all([
+                loadWeather(),
+                loadCalendarEvents(),
+                loadTodos()
+            ]);
+
+            btn.querySelector('svg').classList.remove('loading-spin');
+        }
+
+        // Event Alert System
+        function checkUpcomingEvents() {
+            const now = new Date();
+
+            // Check calendar events
+            for (const event of events) {
+                const eventStart = event.startDate;
+                const eventId = `${event.summary}-${eventStart.getTime()}`;
+
+                // Skip if already alerted and not snoozed
+                if (alertedEvents.has(eventId) && !snoozedEvents[eventId]) {
+                    continue;
+                }
+
+                // Check if snoozed and snooze time hasn't passed yet
+                if (snoozedEvents[eventId] && now < snoozedEvents[eventId]) {
+                    continue;
+                }
+
+                // Calculate minutes until event
+                const minutesUntil = (eventStart - now) / (1000 * 60);
+
+                // Alert if event is within ALERT_MINUTES_BEFORE minutes and hasn't started yet
+                if (minutesUntil > 0 && minutesUntil <= ALERT_MINUTES_BEFORE) {
+                    showEventAlert(event, minutesUntil);
+                    alertedEvents.add(eventId);
+                    delete snoozedEvents[eventId]; // Clear snooze if was snoozed
+                    return; // Only show one alert at a time
+                }
+
+                // Also alert if snoozed event's snooze time has passed
+                if (snoozedEvents[eventId] && now >= snoozedEvents[eventId]) {
+                    showEventAlert(event, minutesUntil);
+                    delete snoozedEvents[eventId];
+                    return;
+                }
+            }
+
+            // Check prayer times
+            const prayerNames = {
+                fajr: 'Fajr Prayer',
+                dhuhr: 'Dhuhr Prayer',
+                asr: 'Asr Prayer',
+                maghrib: 'Maghrib Prayer',
+                isha: 'Isha Prayer'
+            };
+
+            for (const [prayer, time] of Object.entries(prayerTimes)) {
+                if (!time) continue;
+
+                const prayerId = `prayer-${prayer}-${time.toDateString()}`;
+
+                // Skip if already alerted and not snoozed
+                if (alertedEvents.has(prayerId) && !snoozedEvents[prayerId]) {
+                    continue;
+                }
+
+                // Check if snoozed and snooze time hasn't passed yet
+                if (snoozedEvents[prayerId] && now < snoozedEvents[prayerId]) {
+                    continue;
+                }
+
+                const minutesUntil = (time - now) / (1000 * 60);
+
+                // Alert if prayer is within ALERT_MINUTES_BEFORE minutes
+                if (minutesUntil > 0 && minutesUntil <= ALERT_MINUTES_BEFORE) {
+                    const prayerEvent = {
+                        summary: prayerNames[prayer],
+                        startDate: time,
+                        endDate: new Date(time.getTime() + 30 * 60 * 1000), // 30 min duration
+                        isPrayer: true,
+                        prayerId: prayerId
+                    };
+                    showEventAlert(prayerEvent, minutesUntil, true);
+                    alertedEvents.add(prayerId);
+                    delete snoozedEvents[prayerId];
+                    return;
+                }
+
+                // Also alert if snoozed prayer's snooze time has passed
+                if (snoozedEvents[prayerId] && now >= snoozedEvents[prayerId]) {
+                    const prayerEvent = {
+                        summary: prayerNames[prayer],
+                        startDate: time,
+                        endDate: new Date(time.getTime() + 30 * 60 * 1000),
+                        isPrayer: true,
+                        prayerId: prayerId
+                    };
+                    showEventAlert(prayerEvent, minutesUntil, true);
+                    delete snoozedEvents[prayerId];
+                    return;
+                }
+            }
+        }
+
+        function showEventAlert(event, minutesUntil, isPrayer = false) {
+            currentAlertEvent = event;
+
+            const modal = document.getElementById('alertModal');
+            const title = document.getElementById('alert-title');
+            const time = document.getElementById('alert-time');
+            const details = document.getElementById('alert-details');
+            const iconEl = document.querySelector('#alertModal .animate-bounce');
+            const labelEl = document.querySelector('#alertModal .text-indigo-400');
+
+            // Update icon and label based on event type
+            if (isPrayer || event.isPrayer) {
+                iconEl.textContent = '🕌';
+                labelEl.textContent = 'Prayer Time';
+            } else {
+                iconEl.textContent = '🔔';
+                labelEl.textContent = 'Upcoming Event';
+            }
+
+            title.textContent = event.summary;
+
+            const startTime = event.startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const endTime = event.endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+            if (minutesUntil <= 0) {
+                time.textContent = isPrayer ? 'Time for prayer!' : 'Starting now!';
+            } else if (minutesUntil < 1) {
+                time.textContent = 'Starting in less than a minute!';
+            } else {
+                time.textContent = `Starting in ${Math.round(minutesUntil)} minute${Math.round(minutesUntil) === 1 ? '' : 's'}`;
+            }
+
+            if (isPrayer || event.isPrayer) {
+                details.textContent = `Prayer time: ${startTime}`;
+            } else {
+                details.textContent = `${startTime} - ${endTime}`;
+            }
+
+            modal.classList.remove('hidden');
+
+            // Initialize volume slider with saved value
+            initVolumeSlider();
+
+            // Start looping alarm sound
+            startAlarmLoop();
+
+            // Announce the event using TTS
+            let announcement;
+            if (isPrayer || event.isPrayer) {
+                announcement = `Time for ${event.summary} prayer`;
+            } else if (minutesUntil <= 0) {
+                announcement = `${event.summary} is starting now`;
+            } else {
+                announcement = `${event.summary} starts in ${Math.round(minutesUntil)} minutes`;
+            }
+            speakText(announcement);
+
+            // Request browser notification permission and show notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(event.summary, {
+                    body: isPrayer ? `Prayer time: ${startTime}` : `Starts at ${startTime}`,
+                    icon: isPrayer ? '🕌' : '📅'
+                });
+            } else if ('Notification' in window && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        }
+
+        function snoozeAlert(minutes) {
+            // Stop the alarm and TTS
+            stopAlarm();
+
+            if (currentAlertEvent) {
+                const eventId = currentAlertEvent.prayerId || `${currentAlertEvent.summary}-${currentAlertEvent.startDate.getTime()}`;
+                const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
+                snoozedEvents[eventId] = snoozeUntil;
+                alertedEvents.delete(eventId); // Allow re-alerting after snooze
+
+                console.log(`Snoozed "${currentAlertEvent.summary}" for ${minutes} minutes until ${snoozeUntil.toLocaleTimeString()}`);
+
+                // Announce snooze
+                speakText(`Snoozed for ${minutes} minutes`);
+            }
+            closeAlertModal();
+        }
+
+        function dismissAlert() {
+            // Stop the alarm and TTS
+            stopAlarm();
+
+            if (currentAlertEvent) {
+                const eventId = currentAlertEvent.prayerId || `${currentAlertEvent.summary}-${currentAlertEvent.startDate.getTime()}`;
+                alertedEvents.add(eventId); // Mark as dismissed
+                delete snoozedEvents[eventId];
+
+                console.log(`Dismissed "${currentAlertEvent.summary}"`);
+            }
+            closeAlertModal();
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alertModal').classList.add('hidden');
+            currentAlertEvent = null;
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

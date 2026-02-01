@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Assistant Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #242424;
+            --bg-card-hover: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --accent-orange: #f97316;
+            --accent-cyan: #06b6d4;
+            --border-color: #333333;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 i {
+            color: var(--accent-blue);
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .last-updated {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .controls-label {
+            font-weight: 500;
+            margin-right: 10px;
+            color: var(--text-secondary);
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-btn:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .toggle-btn i {
+            font-size: 12px;
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+            padding: 10px 20px;
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #2563eb;
+        }
+
+        .refresh-btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Floor Section */
+        .floor-section {
+            margin-bottom: 40px;
+        }
+
+        .floor-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .floor-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .floor-title {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .floor-count {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* Room Grid */
+        .room-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        /* Room Card */
+        .room-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .room-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .room-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .room-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-cyan);
+        }
+
+        .room-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .room-device-count {
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        /* Device Categories */
+        .device-category {
+            margin-bottom: 12px;
+        }
+
+        .device-category:last-child {
+            margin-bottom: 0;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .category-header i {
+            font-size: 10px;
+        }
+
+        /* Device Items */
+        .device-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .device-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .device-item:hover {
+            border-color: var(--border-color);
+        }
+
+        .device-item .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .device-item .status-dot.on {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .device-item .status-dot.off {
+            background: var(--text-muted);
+        }
+
+        .device-item .status-dot.unavailable {
+            background: var(--accent-red);
+        }
+
+        .device-item .device-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+
+        .device-item .device-value {
+            color: var(--accent-blue);
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        /* Category Colors */
+        .category-light .category-header { color: var(--accent-yellow); }
+        .category-switch .category-header { color: var(--accent-green); }
+        .category-sensor .category-header { color: var(--accent-blue); }
+        .category-camera .category-header { color: var(--accent-red); }
+        .category-media .category-header { color: var(--accent-purple); }
+        .category-climate .category-header { color: var(--accent-orange); }
+        .category-binary .category-header { color: var(--accent-cyan); }
+
+        /* Unassigned Section */
+        .unassigned-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid var(--border-color);
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 15, 15, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            text-align: center;
+        }
+
+        .loading-spinner i {
+            font-size: 48px;
+            color: var(--accent-blue);
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-spinner p {
+            margin-top: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .toggle-btn {
+                justify-content: center;
+            }
+
+            .refresh-btn {
+                margin-left: 0;
+                justify-content: center;
+            }
+
+            .room-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Collapse Toggle */
+        .floor-header {
+            cursor: pointer;
+        }
+
+        .floor-header .collapse-icon {
+            margin-left: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .floor-section.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .floor-section.collapsed .room-grid {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-circle-notch"></i>
+            <p>Loading Home Assistant data...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-home"></i> Home Assistant Dashboard</h1>
+            <div class="header-stats">
+                <div class="stat">
+                    <div class="stat-value" id="total-devices">--</div>
+                    <div class="stat-label">Devices</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="active-devices">--</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="total-rooms">--</div>
+                    <div class="stat-label">Rooms</div>
+                </div>
+            </div>
+            <div class="last-updated">Last updated: <span id="update-time">--</span></div>
+        </header>
+
+        <div class="controls">
+            <span class="controls-label">Show/Hide:</span>
+            <button class="toggle-btn active" data-category="light">
+                <i class="fas fa-lightbulb"></i> Lights
+            </button>
+            <button class="toggle-btn active" data-category="switch">
+                <i class="fas fa-toggle-on"></i> Switches
+            </button>
+            <button class="toggle-btn active" data-category="sensor">
+                <i class="fas fa-thermometer-half"></i> Sensors
+            </button>
+            <button class="toggle-btn active" data-category="binary_sensor">
+                <i class="fas fa-door-open"></i> Binary Sensors
+            </button>
+            <button class="toggle-btn active" data-category="camera">
+                <i class="fas fa-video"></i> Cameras
+            </button>
+            <button class="toggle-btn active" data-category="media_player">
+                <i class="fas fa-tv"></i> Media
+            </button>
+            <button class="toggle-btn active" data-category="climate">
+                <i class="fas fa-temperature-high"></i> Climate
+            </button>
+            <button class="toggle-btn active" data-category="cover">
+                <i class="fas fa-window-maximize"></i> Covers
+            </button>
+            <button class="toggle-btn active" data-category="lock">
+                <i class="fas fa-lock"></i> Locks
+            </button>
+            <button id="refresh-btn" class="refresh-btn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <main id="dashboard-content">
+            <!-- Content will be injected here -->
+        </main>
+    </div>
+
+    <script>
+        // Configuration - uses local proxy server
+        const CONFIG = {
+            haUrl: '',  // Empty = use relative URLs via proxy
+            token: ''   // Token handled by proxy server
+        };
+
+        // Floor order and icons
+        const FLOOR_CONFIG = {
+            'roof': { order: 0, icon: 'fa-cloud', name: 'Roof' },
+            'upper_floor': { order: 1, icon: 'fa-bed', name: 'Upper Floor' },
+            'ground': { order: 2, icon: 'fa-couch', name: 'Ground Floor' },
+            'basement': { order: 3, icon: 'fa-warehouse', name: 'Basement' }
+        };
+
+        // Room icons mapping
+        const ROOM_ICONS = {
+            'living': 'fa-couch',
+            'bedroom': 'fa-bed',
+            'kitchen': 'fa-utensils',
+            'bathroom': 'fa-bath',
+            'washroom': 'fa-toilet',
+            'garage': 'fa-car',
+            'backyard': 'fa-tree',
+            'frontyard': 'fa-home',
+            'patio': 'fa-umbrella-beach',
+            'basement': 'fa-warehouse',
+            'laundry': 'fa-tshirt',
+            'foyer': 'fa-door-open',
+            'dining': 'fa-utensils',
+            'study': 'fa-book',
+            'kids': 'fa-child',
+            'master': 'fa-crown',
+            'guest': 'fa-user',
+            'toy': 'fa-gamepad',
+            'balcony': 'fa-sun',
+            'driveway': 'fa-road',
+            'rooftop': 'fa-cloud',
+            'formal': 'fa-glass-cheers',
+            'default': 'fa-door-closed'
+        };
+
+        // Category config
+        const CATEGORY_CONFIG = {
+            'light': { icon: 'fa-lightbulb', label: 'Lights', class: 'category-light' },
+            'switch': { icon: 'fa-toggle-on', label: 'Switches', class: 'category-switch' },
+            'sensor': { icon: 'fa-thermometer-half', label: 'Sensors', class: 'category-sensor' },
+            'binary_sensor': { icon: 'fa-door-open', label: 'Binary Sensors', class: 'category-binary' },
+            'camera': { icon: 'fa-video', label: 'Cameras', class: 'category-camera' },
+            'media_player': { icon: 'fa-tv', label: 'Media Players', class: 'category-media' },
+            'climate': { icon: 'fa-temperature-high', label: 'Climate', class: 'category-climate' },
+            'cover': { icon: 'fa-window-maximize', label: 'Covers', class: 'category-switch' },
+            'lock': { icon: 'fa-lock', label: 'Locks', class: 'category-switch' },
+            'fan': { icon: 'fa-fan', label: 'Fans', class: 'category-switch' },
+            'vacuum': { icon: 'fa-robot', label: 'Vacuums', class: 'category-switch' }
+        };
+
+        // State
+        let visibleCategories = new Set(['light', 'switch', 'sensor', 'binary_sensor', 'camera', 'media_player', 'climate', 'cover', 'lock']);
+        let dashboardData = null;
+
+        // API Helper - requests go through local proxy
+        async function fetchHA(endpoint, method = 'GET', body = null, asText = false) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            if (body) options.body = JSON.stringify(body);
+
+            const response = await fetch(endpoint, options);
+            return asText ? response.text() : response.json();
+        }
+
+        // Template API call - returns plain text
+        async function renderTemplate(template) {
+            return fetchHA('/api/template', 'POST', { template }, true);
+        }
+
+        // Get room icon
+        function getRoomIcon(roomName) {
+            const lowerName = roomName.toLowerCase();
+            for (const [key, icon] of Object.entries(ROOM_ICONS)) {
+                if (lowerName.includes(key)) return icon;
+            }
+            return ROOM_ICONS.default;
+        }
+
+        // Get device status
+        function getDeviceStatus(state) {
+            if (state === 'unavailable' || state === 'unknown') return 'unavailable';
+            if (state === 'on' || state === 'playing' || state === 'open' || state === 'unlocked') return 'on';
+            return 'off';
+        }
+
+        // Format device value
+        function formatValue(entity) {
+            const state = entity.state;
+            const attrs = entity.attributes;
+            const domain = entity.entity_id.split('.')[0];
+
+            if (state === 'unavailable' || state === 'unknown') return '';
+
+            if (domain === 'sensor') {
+                const unit = attrs.unit_of_measurement || '';
+                if (state === 'unavailable') return '';
+                return `${state}${unit}`;
+            }
+
+            if (domain === 'climate') {
+                return attrs.current_temperature ? `${attrs.current_temperature}°` : '';
+            }
+
+            if (domain === 'light' && state === 'on' && attrs.brightness) {
+                return `${Math.round(attrs.brightness / 255 * 100)}%`;
+            }
+
+            return '';
+        }
+
+        // Load all data
+        async function loadDashboardData() {
+            try {
+                // Fetch states
+                const states = await fetchHA('/api/states');
+
+                // Fetch areas
+                const areasRaw = await renderTemplate('{% for area in areas() %}{{ area_name(area) }}|||{{ area }}\n{% endfor %}');
+                const areas = areasRaw.split('\n').filter(l => l).map(l => {
+                    const [name, id] = l.split('|||');
+                    return { id, name };
+                });
+
+                // Fetch floors
+                const floorsRaw = await renderTemplate('{% for floor in floors() %}{{ floor_name(floor) }}|||{{ floor }}\n{% endfor %}');
+                const floors = floorsRaw.split('\n').filter(l => l).map(l => {
+                    const [name, id] = l.split('|||');
+                    return { id, name };
+                });
+
+                // Fetch floor-area mapping
+                const floorAreasRaw = await renderTemplate('{% for floor in floors() %}{% for area in floor_areas(floor) %}{{ floor }}|||{{ area }}\n{% endfor %}{% endfor %}');
+                const floorAreas = {};
+                floorAreasRaw.split('\n').filter(l => l).forEach(l => {
+                    const [floor, area] = l.split('|||');
+                    if (!floorAreas[floor]) floorAreas[floor] = [];
+                    floorAreas[floor].push(area);
+                });
+
+                // Fetch area-entity mapping
+                const areaEntitiesRaw = await renderTemplate('{% for area in areas() %}{% for entity in area_entities(area) %}{{ area }}|||{{ entity }}\n{% endfor %}{% endfor %}');
+                const areaEntities = {};
+                areaEntitiesRaw.split('\n').filter(l => l).forEach(l => {
+                    const [area, entity] = l.split('|||');
+                    if (!areaEntities[area]) areaEntities[area] = [];
+                    areaEntities[area].push(entity);
+                });
+
+                // Create entity lookup
+                const entityMap = {};
+                states.forEach(e => entityMap[e.entity_id] = e);
+
+                return { states, areas, floors, floorAreas, areaEntities, entityMap };
+            } catch (error) {
+                console.error('Error loading data:', error);
+                throw error;
+            }
+        }
+
+        // Render dashboard
+        function renderDashboard(data) {
+            const { areas, floors, floorAreas, areaEntities, entityMap } = data;
+            const content = document.getElementById('dashboard-content');
+
+            // Create area lookup
+            const areaLookup = {};
+            areas.forEach(a => areaLookup[a.id] = a.name);
+
+            // Track stats
+            let totalDevices = 0;
+            let activeDevices = 0;
+            const roomsWithDevices = new Set();
+
+            // Sort floors
+            const sortedFloors = floors.sort((a, b) => {
+                const orderA = FLOOR_CONFIG[a.id]?.order ?? 99;
+                const orderB = FLOOR_CONFIG[b.id]?.order ?? 99;
+                return orderA - orderB;
+            });
+
+            let html = '';
+
+            // Render each floor
+            sortedFloors.forEach(floor => {
+                const floorConfig = FLOOR_CONFIG[floor.id] || { icon: 'fa-building', name: floor.name };
+                const floorAreaIds = floorAreas[floor.id] || [];
+
+                let floorHtml = '';
+                let floorDeviceCount = 0;
+
+                floorAreaIds.forEach(areaId => {
+                    const areaName = areaLookup[areaId] || areaId;
+                    const entities = (areaEntities[areaId] || [])
+                        .map(eid => entityMap[eid])
+                        .filter(e => e);
+
+                    if (entities.length === 0) return;
+
+                    // Group by domain
+                    const byDomain = {};
+                    entities.forEach(e => {
+                        const domain = e.entity_id.split('.')[0];
+                        if (!byDomain[domain]) byDomain[domain] = [];
+                        byDomain[domain].push(e);
+                    });
+
+                    // Filter visible categories
+                    const visibleDomains = Object.keys(byDomain).filter(d => visibleCategories.has(d));
+                    if (visibleDomains.length === 0) return;
+
+                    roomsWithDevices.add(areaId);
+                    const roomIcon = getRoomIcon(areaName);
+                    let roomDeviceCount = 0;
+
+                    let categoriesHtml = '';
+                    visibleDomains.forEach(domain => {
+                        const config = CATEGORY_CONFIG[domain] || { icon: 'fa-circle', label: domain, class: '' };
+                        const domainEntities = byDomain[domain];
+
+                        let devicesHtml = domainEntities.map(e => {
+                            const name = e.attributes.friendly_name || e.entity_id.split('.')[1];
+                            const status = getDeviceStatus(e.state);
+                            const value = formatValue(e);
+
+                            totalDevices++;
+                            roomDeviceCount++;
+                            floorDeviceCount++;
+                            if (status === 'on') activeDevices++;
+
+                            return `
+                                <div class="device-item" title="${e.entity_id}: ${e.state}">
+                                    <span class="status-dot ${status}"></span>
+                                    <span class="device-name">${name}</span>
+                                    ${value ? `<span class="device-value">${value}</span>` : ''}
+                                </div>
+                            `;
+                        }).join('');
+
+                        categoriesHtml += `
+                            <div class="device-category ${config.class}">
+                                <div class="category-header">
+                                    <i class="fas ${config.icon}"></i>
+                                    ${config.label} (${domainEntities.length})
+                                </div>
+                                <div class="device-list">
+                                    ${devicesHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    floorHtml += `
+                        <div class="room-card">
+                            <div class="room-header">
+                                <div class="room-icon">
+                                    <i class="fas ${roomIcon}"></i>
+                                </div>
+                                <div class="room-name">${areaName}</div>
+                                <div class="room-device-count">${roomDeviceCount} devices</div>
+                            </div>
+                            ${categoriesHtml}
+                        </div>
+                    `;
+                });
+
+                if (floorHtml) {
+                    html += `
+                        <section class="floor-section">
+                            <div class="floor-header" onclick="toggleFloor(this)">
+                                <div class="floor-icon">
+                                    <i class="fas ${floorConfig.icon}"></i>
+                                </div>
+                                <h2 class="floor-title">${floorConfig.name}</h2>
+                                <span class="floor-count">${floorDeviceCount} devices</span>
+                                <i class="fas fa-chevron-down collapse-icon"></i>
+                            </div>
+                            <div class="room-grid">
+                                ${floorHtml}
+                            </div>
+                        </section>
+                    `;
+                }
+            });
+
+            // Unassigned areas (not in any floor)
+            const assignedAreas = new Set(Object.values(floorAreas).flat());
+            const unassignedAreas = areas.filter(a => !assignedAreas.has(a.id));
+
+            if (unassignedAreas.length > 0) {
+                let unassignedHtml = '';
+                let unassignedCount = 0;
+
+                unassignedAreas.forEach(area => {
+                    const entities = (areaEntities[area.id] || [])
+                        .map(eid => entityMap[eid])
+                        .filter(e => e);
+
+                    if (entities.length === 0) return;
+
+                    const byDomain = {};
+                    entities.forEach(e => {
+                        const domain = e.entity_id.split('.')[0];
+                        if (!byDomain[domain]) byDomain[domain] = [];
+                        byDomain[domain].push(e);
+                    });
+
+                    const visibleDomains = Object.keys(byDomain).filter(d => visibleCategories.has(d));
+                    if (visibleDomains.length === 0) return;
+
+                    roomsWithDevices.add(area.id);
+                    const roomIcon = getRoomIcon(area.name);
+                    let roomDeviceCount = 0;
+
+                    let categoriesHtml = '';
+                    visibleDomains.forEach(domain => {
+                        const config = CATEGORY_CONFIG[domain] || { icon: 'fa-circle', label: domain, class: '' };
+                        const domainEntities = byDomain[domain];
+
+                        let devicesHtml = domainEntities.map(e => {
+                            const name = e.attributes.friendly_name || e.entity_id.split('.')[1];
+                            const status = getDeviceStatus(e.state);
+                            const value = formatValue(e);
+
+                            totalDevices++;
+                            roomDeviceCount++;
+                            unassignedCount++;
+                            if (status === 'on') activeDevices++;
+
+                            return `
+                                <div class="device-item" title="${e.entity_id}: ${e.state}">
+                                    <span class="status-dot ${status}"></span>
+                                    <span class="device-name">${name}</span>
+                                    ${value ? `<span class="device-value">${value}</span>` : ''}
+                                </div>
+                            `;
+                        }).join('');
+
+                        categoriesHtml += `
+                            <div class="device-category ${config.class}">
+                                <div class="category-header">
+                                    <i class="fas ${config.icon}"></i>
+                                    ${config.label} (${domainEntities.length})
+                                </div>
+                                <div class="device-list">
+                                    ${devicesHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    unassignedHtml += `
+                        <div class="room-card">
+                            <div class="room-header">
+                                <div class="room-icon">
+                                    <i class="fas ${roomIcon}"></i>
+                                </div>
+                                <div class="room-name">${area.name}</div>
+                                <div class="room-device-count">${roomDeviceCount} devices</div>
+                            </div>
+                            ${categoriesHtml}
+                        </div>
+                    `;
+                });
+
+                if (unassignedHtml) {
+                    html += `
+                        <section class="floor-section unassigned-section">
+                            <div class="floor-header" onclick="toggleFloor(this)">
+                                <div class="floor-icon">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                                <h2 class="floor-title">Other Areas</h2>
+                                <span class="floor-count">${unassignedCount} devices</span>
+                                <i class="fas fa-chevron-down collapse-icon"></i>
+                            </div>
+                            <div class="room-grid">
+                                ${unassignedHtml}
+                            </div>
+                        </section>
+                    `;
+                }
+            }
+
+            content.innerHTML = html || '<div class="empty-state"><i class="fas fa-inbox"></i><p>No devices found matching filters</p></div>';
+
+            // Update stats
+            document.getElementById('total-devices').textContent = totalDevices;
+            document.getElementById('active-devices').textContent = activeDevices;
+            document.getElementById('total-rooms').textContent = roomsWithDevices.size;
+            document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Toggle floor collapse
+        function toggleFloor(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+
+        // Initialize
+        async function init() {
+            try {
+                dashboardData = await loadDashboardData();
+                renderDashboard(dashboardData);
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="loading-spinner">
+                        <i class="fas fa-exclamation-triangle" style="animation: none; color: var(--accent-red);"></i>
+                        <p>Error loading data: ${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: var(--accent-blue); border: none; color: white; border-radius: 8px; cursor: pointer;">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Event listeners
+        document.querySelectorAll('.toggle-btn[data-category]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const category = btn.dataset.category;
+                btn.classList.toggle('active');
+
+                if (btn.classList.contains('active')) {
+                    visibleCategories.add(category);
+                } else {
+                    visibleCategories.delete(category);
+                }
+
+                if (dashboardData) {
+                    renderDashboard(dashboardData);
+                }
+            });
+        });
+
+        document.getElementById('refresh-btn').addEventListener('click', async function() {
+            this.classList.add('loading');
+            try {
+                dashboardData = await loadDashboardData();
+                renderDashboard(dashboardData);
+            } catch (error) {
+                alert('Error refreshing: ' + error.message);
+            }
+            this.classList.remove('loading');
+        });
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

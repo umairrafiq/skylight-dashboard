@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Skylight Dashboard
+Comment=Home Assistant Dashboard for Calendar, Tasks, and Weather
+Exec=/home/umair/homeassistant/skylight-dashboard.sh
+Icon=/home/umair/homeassistant/skylight-dashboard.svg
+Terminal=false
+Type=Application
+Categories=Utility;Network;
+Keywords=home;assistant;calendar;weather;dashboard;
+StartupNotify=true
+StartupWMClass=skylight-dashboard
