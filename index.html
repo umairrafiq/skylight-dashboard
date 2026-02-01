@@ -78,6 +78,86 @@
 
         .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
 
+        /* Screensaver Ken Burns animations */
+        @keyframes kenburns-zoom-in {
+            0% { transform: scale(1) translate(0, 0); }
+            100% { transform: scale(1.2) translate(-2%, -2%); }
+        }
+        @keyframes kenburns-zoom-out {
+            0% { transform: scale(1.2) translate(-2%, -2%); }
+            100% { transform: scale(1) translate(0, 0); }
+        }
+        @keyframes kenburns-pan-left {
+            0% { transform: scale(1.1) translate(3%, 0); }
+            100% { transform: scale(1.1) translate(-3%, 0); }
+        }
+        @keyframes kenburns-pan-right {
+            0% { transform: scale(1.1) translate(-3%, 0); }
+            100% { transform: scale(1.1) translate(3%, 0); }
+        }
+
+        .kenburns-zoom-in { animation: kenburns-zoom-in 15s ease-out forwards; }
+        .kenburns-zoom-out { animation: kenburns-zoom-out 15s ease-out forwards; }
+        .kenburns-pan-left { animation: kenburns-pan-left 15s ease-out forwards; }
+        .kenburns-pan-right { animation: kenburns-pan-right 15s ease-out forwards; }
+
+        /* Screensaver styles */
+        .screensaver-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 35;
+            background: black;
+            overflow: hidden;
+        }
+
+        .screensaver-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .screensaver-active .main-header {
+            position: fixed !important;
+            top: 0;
+            left: 5rem;
+            right: 0;
+            z-index: 50 !important;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%) !important;
+            padding: 1rem 1.5rem !important;
+            pointer-events: none;
+        }
+
+        .screensaver-active .main-header * {
+            pointer-events: auto;
+        }
+
+        .screensaver-metadata {
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            color: white;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+            z-index: 5;
+        }
+
+        .screensaver-controls {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 5;
+        }
+
+        .screensaver-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
         .calendar-color-kids { background-color: #ec4899; }
         .calendar-color-personal { background-color: #6366f1; }
         .calendar-color-work { background-color: #f59e0b; }
@@ -90,6 +170,228 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen">
+
+    <!-- Screensaver Overlay -->
+    <div id="screensaverOverlay" class="screensaver-overlay hidden">
+        <!-- Background layers for crossfade -->
+        <div id="screensaver-bg-1" class="screensaver-bg opacity-100"></div>
+        <div id="screensaver-bg-2" class="screensaver-bg opacity-0"></div>
+
+        <!-- Loading spinner -->
+        <div id="screensaver-loading" class="screensaver-loading hidden">
+            <div class="flex flex-col items-center gap-4">
+                <svg class="w-12 h-12 text-white loading-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-white text-lg">Loading photos...</span>
+            </div>
+        </div>
+
+        <!-- Photo metadata -->
+        <div id="screensaver-metadata" class="screensaver-metadata hidden">
+            <div id="screensaver-date" class="text-lg font-light opacity-80"></div>
+            <div id="screensaver-location" class="text-sm opacity-60"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="screensaver-controls flex items-center gap-3">
+            <button onclick="screensaverController?.previousPhoto()" class="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur rounded-full flex items-center justify-center text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button onclick="screensaverController?.nextPhoto()" class="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur rounded-full flex items-center justify-center text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button onclick="openScreensaverSettings()" class="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur rounded-full flex items-center justify-center text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Screensaver Settings Modal -->
+    <div id="screensaverSettingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
+        <div class="bg-slate-800 p-6 w-full max-w-lg border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white">Screensaver Settings</h3>
+                <button onclick="closeScreensaverSettings()" class="w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Enable Toggle -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-white font-medium">Enable Screensaver</div>
+                        <div class="text-sm text-slate-400">Activate slideshow when idle</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="ss-enabled" class="sr-only peer" onchange="updateScreensaverSetting('enabled', this.checked)">
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Idle Timeout -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-white font-medium">Idle Timeout</span>
+                        <span id="ss-idle-value" class="text-slate-400">5 minutes</span>
+                    </div>
+                    <input type="range" id="ss-idle-timeout" min="1" max="30" value="5"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        oninput="document.getElementById('ss-idle-value').textContent = this.value + ' minute' + (this.value == 1 ? '' : 's')"
+                        onchange="updateScreensaverSetting('idleTimeout', this.value * 60000)">
+                </div>
+
+                <!-- Slide Duration -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-white font-medium">Photo Duration</span>
+                        <span id="ss-slide-value" class="text-slate-400">10 seconds</span>
+                    </div>
+                    <input type="range" id="ss-slide-interval" min="5" max="60" value="10"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        oninput="document.getElementById('ss-slide-value').textContent = this.value + ' seconds'"
+                        onchange="updateScreensaverSetting('slideInterval', this.value * 1000)">
+                </div>
+
+                <!-- Ken Burns Toggle -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-white font-medium">Ken Burns Effect</div>
+                        <div class="text-sm text-slate-400">Smooth pan and zoom animations</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="ss-kenburns" class="sr-only peer" onchange="updateScreensaverSetting('kenBurnsEnabled', this.checked)">
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Show Metadata Toggle -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-white font-medium">Show Photo Info</div>
+                        <div class="text-sm text-slate-400">Display date and location</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="ss-metadata" class="sr-only peer" onchange="updateScreensaverSetting('showMetadata', this.checked)">
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Hourly Chime -->
+                <div class="border-t border-slate-700 pt-6">
+                    <h4 class="text-white font-medium mb-4">Hourly Chime</h4>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-white font-medium">Enable Hourly Chime</div>
+                            <div class="text-sm text-slate-400">Play a chime sound every hour</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="ss-hourly-chime" class="sr-only peer" onchange="updateScreensaverSetting('hourlyChimeEnabled', this.checked)">
+                            <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-white font-medium">Announce Time</div>
+                            <div class="text-sm text-slate-400">Speak the time aloud</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="ss-hourly-callout" class="sr-only peer" onchange="updateScreensaverSetting('hourlyChimeCallout', this.checked)">
+                            <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-2">Start Hour</label>
+                            <select id="ss-chime-start" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="updateScreensaverSetting('hourlyChimeStart', parseInt(this.value))">
+                                <option value="5">5:00 AM</option>
+                                <option value="6">6:00 AM</option>
+                                <option value="7">7:00 AM</option>
+                                <option value="8">8:00 AM</option>
+                                <option value="9">9:00 AM</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-2">End Hour</label>
+                            <select id="ss-chime-end" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="updateScreensaverSetting('hourlyChimeEnd', parseInt(this.value))">
+                                <option value="20">8:00 PM</option>
+                                <option value="21">9:00 PM</option>
+                                <option value="22">10:00 PM</option>
+                                <option value="23">11:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="testHourlyChime()" class="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors">
+                        Test Chime
+                    </button>
+                </div>
+
+                <!-- Photo Source -->
+                <div class="border-t border-slate-700 pt-6">
+                    <h4 class="text-white font-medium mb-4">Photo Source</h4>
+
+                    <div class="mb-4">
+                        <label class="block text-sm text-slate-400 mb-2">Provider</label>
+                        <select id="ss-provider" class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="updateScreensaverSetting('providerType', this.value); toggleProviderConfig(this.value)">
+                            <option value="local">Local/Network Folder</option>
+                            <option value="synology">Synology Photos</option>
+                            <option value="google" disabled>Google Photos (Coming Soon)</option>
+                        </select>
+                    </div>
+
+                    <!-- Local Folder Config -->
+                    <div id="local-config" class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-2">Folder Path</label>
+                            <input type="text" id="ss-local-path" placeholder="/path/to/photos or /mnt/nas/photos"
+                                class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onchange="updateLocalConfig()">
+                            <p class="text-xs text-slate-500 mt-1">Absolute path to folder containing images (supports SMB mounts)</p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button onclick="testLocalConnection()" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors">
+                                Test Connection
+                            </button>
+                            <button onclick="previewScreensaver()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors">
+                                Preview
+                            </button>
+                        </div>
+
+                        <div id="ss-local-status" class="text-sm hidden"></div>
+                    </div>
+
+                    <!-- Synology Config -->
+                    <div id="synology-config" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-2">Share Link</label>
+                            <input type="text" id="ss-synology-share" placeholder="http://your-nas:5000/mo/sharing/xxxxx"
+                                class="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onchange="updateSynologyConfig()">
+                            <p class="text-xs text-slate-500 mt-1">Paste the full shared album URL from Synology Photos</p>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button onclick="testSynologyConnection()" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors">
+                                Test Connection
+                            </button>
+                            <button onclick="previewScreensaver()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors">
+                                Preview
+                            </button>
+                        </div>
+
+                        <div id="ss-connection-status" class="text-sm hidden"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Event Alert Modal -->
     <div id="alertModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
@@ -256,12 +558,16 @@
             <button onclick="toggleTheme()" id="theme-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-2xl" title="Toggle theme">
                 <span id="theme-icon">☀️</span>
             </button>
+
+            <button onclick="openScreensaverSettings()" id="screensaver-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white" title="Screensaver Settings">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </button>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col p-6 overflow-hidden">
             <!-- Weather and Time Header -->
-            <div class="flex justify-between items-center mb-4">
+            <div id="main-header" class="main-header flex justify-between items-center mb-4">
                 <div class="flex items-center gap-8">
                     <!-- Weather -->
                     <div class="flex items-center gap-3">
@@ -583,6 +889,12 @@
                     checkUpcomingEvents();
                 }
             });
+
+            // Initialize screensaver system
+            initScreensaver();
+
+            // Check for hourly chime every 30 seconds
+            setInterval(checkHourlyChime, 30000);
 
             console.log('Event alert system initialized - checking every 30 seconds');
         }
@@ -2080,6 +2392,11 @@
         }
 
         function showEventAlert(event, minutesUntil, isPrayer = false) {
+            // Wake screensaver before showing alert
+            if (screensaverController?.isActive) {
+                screensaverController.wake('alarm');
+            }
+
             currentAlertEvent = event;
 
             const modal = document.getElementById('alertModal');
@@ -2183,6 +2500,847 @@
             document.getElementById('alertModal').classList.add('hidden');
             currentAlertEvent = null;
         }
+
+        // ==================== SCREENSAVER SYSTEM ====================
+
+        // Screensaver Settings
+        const DEFAULT_SCREENSAVER_SETTINGS = {
+            enabled: true,
+            idleTimeout: 5 * 60 * 1000, // 5 minutes
+            slideInterval: 10 * 1000,   // 10 seconds
+            transitionDuration: 1500,    // 1.5 seconds
+            kenBurnsEnabled: true,
+            showMetadata: true,
+            hourlyChimeEnabled: false,
+            hourlyChimeCallout: true,
+            hourlyChimeStart: 6,
+            hourlyChimeEnd: 22,
+            providerType: 'local',
+            providerConfig: {
+                folderPath: '',
+                shareLink: ''
+            }
+        };
+
+        let screensaverSettings = { ...DEFAULT_SCREENSAVER_SETTINGS };
+        let screensaverController = null;
+        let idleDetector = null;
+
+        // Load settings from localStorage
+        function loadScreensaverSettings() {
+            try {
+                const saved = localStorage.getItem('screensaverSettings');
+                if (saved) {
+                    screensaverSettings = { ...DEFAULT_SCREENSAVER_SETTINGS, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.error('Error loading screensaver settings:', e);
+            }
+        }
+
+        // Save settings to localStorage
+        function saveScreensaverSettings() {
+            try {
+                localStorage.setItem('screensaverSettings', JSON.stringify(screensaverSettings));
+            } catch (e) {
+                console.error('Error saving screensaver settings:', e);
+            }
+        }
+
+        // Update a single setting
+        function updateScreensaverSetting(key, value) {
+            screensaverSettings[key] = value;
+            saveScreensaverSettings();
+
+            // Apply changes immediately if applicable
+            if (key === 'enabled') {
+                if (value && idleDetector) {
+                    idleDetector.start();
+                } else if (!value && idleDetector) {
+                    idleDetector.stop();
+                    if (screensaverController?.isActive) {
+                        screensaverController.wake('settings');
+                    }
+                }
+            } else if (key === 'idleTimeout' && idleDetector) {
+                idleDetector.timeout = value;
+            } else if (key === 'slideInterval' && screensaverController) {
+                screensaverController.slideInterval = value;
+            }
+
+            console.log(`Screensaver setting updated: ${key} = ${value}`);
+        }
+
+        // Update Synology config
+        function updateSynologyConfig() {
+            const shareLink = document.getElementById('ss-synology-share')?.value || '';
+            screensaverSettings.providerConfig.shareLink = shareLink;
+            saveScreensaverSettings();
+        }
+
+        // Update Local folder config
+        function updateLocalConfig() {
+            const folderPath = document.getElementById('ss-local-path')?.value || '';
+            screensaverSettings.providerConfig.folderPath = folderPath;
+            saveScreensaverSettings();
+        }
+
+        // Toggle provider config visibility
+        function toggleProviderConfig(provider) {
+            const synologyConfig = document.getElementById('synology-config');
+            const localConfig = document.getElementById('local-config');
+
+            if (synologyConfig) {
+                synologyConfig.classList.toggle('hidden', provider !== 'synology');
+            }
+            if (localConfig) {
+                localConfig.classList.toggle('hidden', provider !== 'local');
+            }
+        }
+
+        // Test local folder connection
+        async function testLocalConnection() {
+            const statusEl = document.getElementById('ss-local-status');
+            statusEl.classList.remove('hidden');
+            statusEl.className = 'text-sm text-yellow-400';
+            statusEl.textContent = 'Testing connection...';
+
+            updateLocalConfig();
+
+            const folderPath = screensaverSettings.providerConfig.folderPath;
+            if (!folderPath) {
+                statusEl.className = 'text-sm text-red-400';
+                statusEl.textContent = 'Please enter a folder path.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/local/photos?path=${encodeURIComponent(folderPath)}`);
+                const data = await response.json();
+
+                if (data.success && data.photos) {
+                    statusEl.className = 'text-sm text-green-400';
+                    statusEl.textContent = `Success! Found ${data.photos.length} photos.`;
+                } else {
+                    statusEl.className = 'text-sm text-red-400';
+                    statusEl.textContent = data.error || 'Folder not found or no images.';
+                }
+            } catch (e) {
+                statusEl.className = 'text-sm text-red-400';
+                statusEl.textContent = 'Connection failed: ' + e.message;
+            }
+        }
+
+        // Idle Detector Class
+        class IdleDetector {
+            constructor(options = {}) {
+                this.timeout = options.timeout || 5 * 60 * 1000;
+                this.onIdle = options.onIdle || (() => {});
+                this.onActive = options.onActive || (() => {});
+                this.isIdle = false;
+                this.timer = null;
+                this.events = ['mousedown', 'mousemove', 'click', 'keydown', 'keyup', 'touchstart', 'touchmove', 'scroll'];
+                this.handleActivity = this.handleActivity.bind(this);
+                this.running = false;
+            }
+
+            start() {
+                if (this.running) return;
+                this.running = true;
+                this.events.forEach(event => {
+                    document.addEventListener(event, this.handleActivity, { passive: true });
+                });
+                this.resetTimer();
+                console.log('IdleDetector started with timeout:', this.timeout);
+            }
+
+            stop() {
+                this.running = false;
+                this.events.forEach(event => {
+                    document.removeEventListener(event, this.handleActivity);
+                });
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            }
+
+            handleActivity() {
+                if (this.isIdle) {
+                    this.isIdle = false;
+                    this.onActive();
+                }
+                this.resetTimer();
+            }
+
+            resetTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                }
+                this.timer = setTimeout(() => {
+                    this.isIdle = true;
+                    this.onIdle();
+                }, this.timeout);
+            }
+        }
+
+        // Photo Provider Base Class
+        class PhotoProvider {
+            constructor(config = {}) {
+                this.config = config;
+                this.photos = [];
+                this.lastFetch = null;
+                this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
+            }
+
+            async authenticate() {
+                return true;
+            }
+
+            async getPhotos() {
+                return [];
+            }
+
+            getPhotoUrl(photo, size = 'xl') {
+                return '';
+            }
+
+            needsRefresh() {
+                return !this.lastFetch || (Date.now() - this.lastFetch > this.cacheTimeout);
+            }
+        }
+
+        // Local Folder Provider - serves photos from a local directory
+        class LocalFolderProvider extends PhotoProvider {
+            constructor(config = {}) {
+                super(config);
+                this.folderPath = config.folderPath || '';
+            }
+
+            async authenticate() {
+                return !!this.folderPath;
+            }
+
+            async getPhotos() {
+                if (!this.folderPath) {
+                    console.error('Local Folder: No folder path configured');
+                    return [];
+                }
+
+                if (!this.needsRefresh() && this.photos.length > 0) {
+                    return this.shuffleArray([...this.photos]);
+                }
+
+                try {
+                    const response = await fetch(`/api/local/photos?path=${encodeURIComponent(this.folderPath)}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.success && data.photos) {
+                        this.photos = data.photos.map(photo => ({
+                            id: photo.name,
+                            filename: photo.name,
+                            path: photo.path,
+                            time: photo.mtime ? new Date(photo.mtime * 1000) : null
+                        }));
+                        this.lastFetch = Date.now();
+                        console.log(`Local Folder: Loaded ${this.photos.length} photos`);
+                    }
+
+                    return this.shuffleArray([...this.photos]);
+                } catch (e) {
+                    console.error('Error fetching local photos:', e);
+                    return this.shuffleArray([...this.photos]);
+                }
+            }
+
+            getPhotoUrl(photo) {
+                if (!photo || !photo.path) return '';
+                return `/api/local/image?path=${encodeURIComponent(photo.path)}`;
+            }
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+        }
+
+        // Synology Photos Provider
+        class SynologyPhotosProvider extends PhotoProvider {
+            constructor(config = {}) {
+                super(config);
+                this.baseUrl = '';
+                this.passphrase = '';
+                this.parseShareLink();
+            }
+
+            parseShareLink() {
+                const shareLink = this.config.shareLink || '';
+                if (!shareLink) return;
+
+                try {
+                    const url = new URL(shareLink);
+                    this.baseUrl = `${url.protocol}//${url.host}`;
+                    // Extract passphrase from path (e.g., /mo/sharing/rkvf2tdz6)
+                    const pathMatch = shareLink.match(/\/sharing\/([a-zA-Z0-9]+)/);
+                    if (pathMatch) {
+                        this.passphrase = pathMatch[1];
+                    }
+                } catch (e) {
+                    console.error('Error parsing Synology share link:', e);
+                }
+            }
+
+            async authenticate() {
+                return this.passphrase && this.baseUrl;
+            }
+
+            async getPhotos() {
+                if (!this.passphrase || !this.baseUrl) {
+                    console.error('Synology Photos: Missing passphrase or base URL');
+                    return [];
+                }
+
+                if (!this.needsRefresh() && this.photos.length > 0) {
+                    return this.shuffleArray([...this.photos]);
+                }
+
+                try {
+                    // Fetch photos from shared album via proxy
+                    const apiUrl = `/api/synology/photos?passphrase=${encodeURIComponent(this.passphrase)}&baseUrl=${encodeURIComponent(this.baseUrl)}`;
+                    const response = await fetch(apiUrl);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success && data.data && data.data.list) {
+                        this.photos = data.data.list.map(item => ({
+                            id: item.id,
+                            filename: item.filename,
+                            time: item.time ? new Date(item.time * 1000) : null,
+                            type: item.type,
+                            additional: item.additional || {}
+                        }));
+                        this.lastFetch = Date.now();
+                        console.log(`Synology Photos: Loaded ${this.photos.length} photos`);
+                    }
+
+                    return this.shuffleArray([...this.photos]);
+                } catch (e) {
+                    console.error('Error fetching Synology photos:', e);
+                    // Return cached photos if available
+                    return this.shuffleArray([...this.photos]);
+                }
+            }
+
+            getPhotoUrl(photo, size = 'xl') {
+                if (!photo || !photo.id) return '';
+                return `/api/synology/thumbnail?id=${photo.id}&size=${size}&passphrase=${encodeURIComponent(this.passphrase)}&baseUrl=${encodeURIComponent(this.baseUrl)}`;
+            }
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+        }
+
+        // Photo Queue for preloading
+        class PhotoQueue {
+            constructor(provider, preloadCount = 5) {
+                this.provider = provider;
+                this.preloadCount = preloadCount;
+                this.photos = [];
+                this.currentIndex = -1;
+                this.preloadedImages = new Map();
+            }
+
+            async initialize() {
+                this.photos = await this.provider.getPhotos();
+                this.currentIndex = -1;
+                this.preloadedImages.clear();
+
+                if (this.photos.length > 0) {
+                    await this.preloadNext();
+                }
+
+                return this.photos.length > 0;
+            }
+
+            async preloadNext() {
+                const toPreload = [];
+                for (let i = 1; i <= this.preloadCount; i++) {
+                    const idx = (this.currentIndex + i) % this.photos.length;
+                    if (idx >= 0 && idx < this.photos.length && !this.preloadedImages.has(idx)) {
+                        toPreload.push(idx);
+                    }
+                }
+
+                for (const idx of toPreload) {
+                    const photo = this.photos[idx];
+                    const url = this.provider.getPhotoUrl(photo);
+                    if (url) {
+                        const img = new Image();
+                        img.src = url;
+                        this.preloadedImages.set(idx, img);
+                    }
+                }
+
+                // Clean up old preloaded images
+                for (const idx of this.preloadedImages.keys()) {
+                    if (idx < this.currentIndex - 2 || idx > this.currentIndex + this.preloadCount + 2) {
+                        this.preloadedImages.delete(idx);
+                    }
+                }
+            }
+
+            next() {
+                if (this.photos.length === 0) return null;
+                this.currentIndex = (this.currentIndex + 1) % this.photos.length;
+                this.preloadNext();
+                return this.photos[this.currentIndex];
+            }
+
+            previous() {
+                if (this.photos.length === 0) return null;
+                this.currentIndex = (this.currentIndex - 1 + this.photos.length) % this.photos.length;
+                return this.photos[this.currentIndex];
+            }
+
+            current() {
+                if (this.photos.length === 0 || this.currentIndex < 0) return null;
+                return this.photos[this.currentIndex];
+            }
+
+            getUrl(photo) {
+                return this.provider.getPhotoUrl(photo);
+            }
+
+            async refresh() {
+                this.photos = await this.provider.getPhotos();
+                if (this.currentIndex >= this.photos.length) {
+                    this.currentIndex = 0;
+                }
+            }
+        }
+
+        // Screensaver Controller
+        class ScreensaverController {
+            constructor(options = {}) {
+                this.overlay = document.getElementById('screensaverOverlay');
+                this.bg1 = document.getElementById('screensaver-bg-1');
+                this.bg2 = document.getElementById('screensaver-bg-2');
+                this.loadingEl = document.getElementById('screensaver-loading');
+                this.metadataEl = document.getElementById('screensaver-metadata');
+                this.dateEl = document.getElementById('screensaver-date');
+                this.locationEl = document.getElementById('screensaver-location');
+
+                this.isActive = false;
+                this.currentBg = 1;
+                this.slideTimer = null;
+                this.photoQueue = null;
+                this.provider = null;
+                this.slideInterval = options.slideInterval || 10000;
+                this.kenBurnsEnabled = options.kenBurnsEnabled !== false;
+                this.showMetadata = options.showMetadata !== false;
+
+                this.kenBurnsEffects = ['kenburns-zoom-in', 'kenburns-zoom-out', 'kenburns-pan-left', 'kenburns-pan-right'];
+            }
+
+            async start() {
+                if (this.isActive) return;
+
+                console.log('Starting screensaver...');
+                this.isActive = true;
+
+                // Show overlay and loading
+                this.overlay.classList.remove('hidden');
+                this.loadingEl.classList.remove('hidden');
+
+                // Add screensaver-active class to body for header styling
+                document.body.classList.add('screensaver-active');
+
+                // Initialize provider if needed
+                if (!this.provider) {
+                    await this.initializeProvider();
+                }
+
+                // Initialize photo queue
+                if (this.provider) {
+                    this.photoQueue = new PhotoQueue(this.provider);
+                    const hasPhotos = await this.photoQueue.initialize();
+
+                    if (hasPhotos) {
+                        this.loadingEl.classList.add('hidden');
+                        this.showNextPhoto();
+                        this.startSlideshow();
+                    } else {
+                        console.log('No photos available for screensaver');
+                        this.loadingEl.querySelector('span').textContent = 'No photos available. Configure photo source in settings.';
+                    }
+                }
+            }
+
+            async initializeProvider() {
+                const config = screensaverSettings.providerConfig || {};
+
+                switch (screensaverSettings.providerType) {
+                    case 'local':
+                        this.provider = new LocalFolderProvider(config);
+                        break;
+                    case 'synology':
+                        this.provider = new SynologyPhotosProvider(config);
+                        break;
+                    default:
+                        this.provider = null;
+                }
+
+                if (this.provider) {
+                    await this.provider.authenticate();
+                }
+            }
+
+            startSlideshow() {
+                this.stopSlideshow();
+                this.slideTimer = setInterval(() => {
+                    this.showNextPhoto();
+                }, this.slideInterval);
+            }
+
+            stopSlideshow() {
+                if (this.slideTimer) {
+                    clearInterval(this.slideTimer);
+                    this.slideTimer = null;
+                }
+            }
+
+            showNextPhoto() {
+                const photo = this.photoQueue?.next();
+                if (!photo) return;
+
+                this.displayPhoto(photo);
+            }
+
+            previousPhoto() {
+                const photo = this.photoQueue?.previous();
+                if (!photo) return;
+
+                this.displayPhoto(photo);
+                // Reset the timer
+                this.startSlideshow();
+            }
+
+            nextPhoto() {
+                this.showNextPhoto();
+                // Reset the timer
+                this.startSlideshow();
+            }
+
+            displayPhoto(photo) {
+                const url = this.photoQueue.getUrl(photo);
+                if (!url) return;
+
+                const activeBg = this.currentBg === 1 ? this.bg1 : this.bg2;
+                const inactiveBg = this.currentBg === 1 ? this.bg2 : this.bg1;
+
+                // Remove old Ken Burns classes
+                this.kenBurnsEffects.forEach(cls => {
+                    inactiveBg.classList.remove(cls);
+                });
+
+                // Set new image on inactive layer
+                inactiveBg.style.backgroundImage = `url(${url})`;
+
+                // Add Ken Burns effect
+                if (this.kenBurnsEnabled) {
+                    const effect = this.kenBurnsEffects[Math.floor(Math.random() * this.kenBurnsEffects.length)];
+                    inactiveBg.classList.add(effect);
+                }
+
+                // Crossfade
+                inactiveBg.style.opacity = '1';
+                activeBg.style.opacity = '0';
+
+                this.currentBg = this.currentBg === 1 ? 2 : 1;
+
+                // Update metadata
+                this.updateMetadata(photo);
+            }
+
+            updateMetadata(photo) {
+                if (!this.showMetadata || !screensaverSettings.showMetadata) {
+                    this.metadataEl.classList.add('hidden');
+                    return;
+                }
+
+                this.metadataEl.classList.remove('hidden');
+
+                // Display date
+                if (photo.time) {
+                    this.dateEl.textContent = photo.time.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                } else {
+                    this.dateEl.textContent = photo.filename || '';
+                }
+
+                // Display location if available
+                const gps = photo.additional?.gps;
+                if (gps && gps.latitude && gps.longitude) {
+                    this.locationEl.textContent = `${gps.latitude.toFixed(4)}, ${gps.longitude.toFixed(4)}`;
+                } else {
+                    this.locationEl.textContent = '';
+                }
+            }
+
+            wake(reason = 'user') {
+                if (!this.isActive) return;
+
+                console.log(`Waking screensaver (reason: ${reason})`);
+
+                this.isActive = false;
+                this.stopSlideshow();
+
+                // Hide overlay
+                this.overlay.classList.add('hidden');
+
+                // Remove screensaver-active class from body
+                document.body.classList.remove('screensaver-active');
+
+                // Reset backgrounds
+                this.bg1.style.backgroundImage = '';
+                this.bg2.style.backgroundImage = '';
+                this.bg1.style.opacity = '1';
+                this.bg2.style.opacity = '0';
+                this.kenBurnsEffects.forEach(cls => {
+                    this.bg1.classList.remove(cls);
+                    this.bg2.classList.remove(cls);
+                });
+            }
+        }
+
+        // Settings Modal Functions
+        function openScreensaverSettings() {
+            // Wake screensaver if active
+            if (screensaverController?.isActive) {
+                screensaverController.wake('settings');
+            }
+
+            // Populate current values
+            document.getElementById('ss-enabled').checked = screensaverSettings.enabled;
+            document.getElementById('ss-idle-timeout').value = screensaverSettings.idleTimeout / 60000;
+            document.getElementById('ss-idle-value').textContent = (screensaverSettings.idleTimeout / 60000) + ' minute' + (screensaverSettings.idleTimeout / 60000 === 1 ? '' : 's');
+            document.getElementById('ss-slide-interval').value = screensaverSettings.slideInterval / 1000;
+            document.getElementById('ss-slide-value').textContent = (screensaverSettings.slideInterval / 1000) + ' seconds';
+            document.getElementById('ss-kenburns').checked = screensaverSettings.kenBurnsEnabled;
+            document.getElementById('ss-metadata').checked = screensaverSettings.showMetadata;
+            document.getElementById('ss-provider').value = screensaverSettings.providerType;
+            document.getElementById('ss-local-path').value = screensaverSettings.providerConfig?.folderPath || '';
+            document.getElementById('ss-synology-share').value = screensaverSettings.providerConfig?.shareLink || '';
+            document.getElementById('ss-hourly-chime').checked = screensaverSettings.hourlyChimeEnabled;
+            document.getElementById('ss-hourly-callout').checked = screensaverSettings.hourlyChimeCallout;
+            document.getElementById('ss-chime-start').value = screensaverSettings.hourlyChimeStart;
+            document.getElementById('ss-chime-end').value = screensaverSettings.hourlyChimeEnd;
+
+            toggleProviderConfig(screensaverSettings.providerType);
+
+            document.getElementById('screensaverSettingsModal').classList.remove('hidden');
+        }
+
+        function closeScreensaverSettings() {
+            document.getElementById('screensaverSettingsModal').classList.add('hidden');
+        }
+
+        async function testSynologyConnection() {
+            const statusEl = document.getElementById('ss-connection-status');
+            statusEl.classList.remove('hidden');
+            statusEl.className = 'text-sm text-yellow-400';
+            statusEl.textContent = 'Testing connection...';
+
+            updateSynologyConfig();
+
+            const provider = new SynologyPhotosProvider(screensaverSettings.providerConfig);
+            const isAuth = await provider.authenticate();
+
+            if (!isAuth) {
+                statusEl.className = 'text-sm text-red-400';
+                statusEl.textContent = 'Invalid share link. Please check the URL format.';
+                return;
+            }
+
+            try {
+                const photos = await provider.getPhotos();
+                if (photos.length > 0) {
+                    statusEl.className = 'text-sm text-green-400';
+                    statusEl.textContent = `Success! Found ${photos.length} photos.`;
+                } else {
+                    statusEl.className = 'text-sm text-yellow-400';
+                    statusEl.textContent = 'Connected but no photos found in album.';
+                }
+            } catch (e) {
+                statusEl.className = 'text-sm text-red-400';
+                statusEl.textContent = 'Connection failed. Check if the share link is correct and the server is accessible.';
+            }
+        }
+
+        function previewScreensaver() {
+            updateSynologyConfig();
+            closeScreensaverSettings();
+
+            // Reset provider to use new config
+            if (screensaverController) {
+                screensaverController.provider = null;
+            }
+
+            // Force start screensaver
+            if (screensaverController) {
+                screensaverController.slideInterval = screensaverSettings.slideInterval;
+                screensaverController.kenBurnsEnabled = screensaverSettings.kenBurnsEnabled;
+                screensaverController.showMetadata = screensaverSettings.showMetadata;
+                screensaverController.start();
+            }
+        }
+
+        // Initialize Screensaver System
+        function initScreensaver() {
+            loadScreensaverSettings();
+
+            screensaverController = new ScreensaverController({
+                slideInterval: screensaverSettings.slideInterval,
+                kenBurnsEnabled: screensaverSettings.kenBurnsEnabled,
+                showMetadata: screensaverSettings.showMetadata
+            });
+
+            idleDetector = new IdleDetector({
+                timeout: screensaverSettings.idleTimeout,
+                onIdle: () => {
+                    if (screensaverSettings.enabled) {
+                        screensaverController.start();
+                    }
+                },
+                onActive: () => {
+                    screensaverController.wake('user');
+                }
+            });
+
+            if (screensaverSettings.enabled) {
+                idleDetector.start();
+            }
+
+            console.log('Screensaver system initialized');
+        }
+
+        // ==================== END SCREENSAVER SYSTEM ====================
+
+        // ==================== HOURLY CHIME SYSTEM ====================
+
+        let lastChimeHour = -1;
+
+        // Play hourly chime sound
+        function playHourlyChime() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                const playTone = (freq, startTime, duration, volume = 0.3) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+
+                    // Soft bell-like envelope
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                };
+
+                const now = audioContext.currentTime;
+
+                // Westminster-style chime (simplified)
+                playTone(659.25, now, 0.5, 0.25);        // E5
+                playTone(523.25, now + 0.5, 0.5, 0.25);  // C5
+                playTone(587.33, now + 1.0, 0.5, 0.25);  // D5
+                playTone(392.00, now + 1.5, 1.0, 0.3);   // G4 (longer)
+
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                console.log('Hourly chime played');
+            } catch (e) {
+                console.error('Error playing hourly chime:', e);
+            }
+        }
+
+        // Announce the time via TTS
+        function announceTime() {
+            const now = new Date();
+            let hour = now.getHours();
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12 || 12;
+
+            const timeText = `It's ${hour} o'clock ${ampm}`;
+            speakText(timeText);
+            console.log('Time announced:', timeText);
+        }
+
+        // Test the hourly chime
+        function testHourlyChime() {
+            playHourlyChime();
+            if (screensaverSettings.hourlyChimeCallout) {
+                setTimeout(announceTime, 2500);
+            }
+        }
+
+        // Check if it's time to play the hourly chime
+        function checkHourlyChime() {
+            if (!screensaverSettings.hourlyChimeEnabled) return;
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+
+            // Only chime at the top of the hour (within first minute)
+            if (currentMinute !== 0) return;
+
+            // Don't repeat chime for the same hour
+            if (currentHour === lastChimeHour) return;
+
+            // Check if within allowed hours
+            if (currentHour < screensaverSettings.hourlyChimeStart ||
+                currentHour >= screensaverSettings.hourlyChimeEnd) {
+                return;
+            }
+
+            lastChimeHour = currentHour;
+            playHourlyChime();
+
+            // Announce time after chime if enabled
+            if (screensaverSettings.hourlyChimeCallout) {
+                setTimeout(announceTime, 2500);
+            }
+        }
+
+        // ==================== END HOURLY CHIME SYSTEM ====================
 
         // Start
         init();

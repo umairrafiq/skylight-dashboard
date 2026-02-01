@@ -15,6 +15,9 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - **Event Alerts** - Soothing chime with gradual volume increase
 - **Text-to-Speech** - Announces events via Home Assistant Piper
 - **Auto Theme** - Switches between dark/light based on sunrise/sunset
+- **Screensaver Slideshow** - Full-screen photo slideshow with Ken Burns effect
+- **Photo Sources** - Local folders, SMB mounts, or Synology Photos
+- **Hourly Chime** - Westminster-style chime with optional time announcement
 
 ## Screenshots
 
@@ -111,6 +114,31 @@ If Piper isn't available, it falls back to the browser's Web Speech API.
 - Volume control appears in the alert modal
 - Setting is saved and persists across sessions
 - Alarm starts quiet and gradually increases over 30 seconds
+
+### Screensaver
+
+The screensaver activates after idle time and displays a photo slideshow:
+
+- **Photo Sources**: Local folder, SMB/network mount, or Synology Photos
+- **Ken Burns Effect**: Smooth pan and zoom animations
+- **Crossfade Transitions**: Beautiful 1.5s transitions between photos
+- **Header Overlay**: Weather, clock, and prayer times remain visible
+- **Wake Events**: Wakes on mouse/touch activity or alarm notifications
+
+To use with a Synology NAS SMB share:
+```bash
+# Mount the share
+sudo mount -t cifs //your-nas/photos /mnt/synology -o username=user,password=pass
+
+# Then set folder path in settings to: /mnt/synology
+```
+
+### Hourly Chime
+
+- Westminster-style bell chime at the top of each hour
+- Optional TTS announcement ("It's X o'clock")
+- Configurable hours (default: 6 AM to 10 PM)
+- Enable/disable in screensaver settings
 
 ## Home Assistant Entities
 
