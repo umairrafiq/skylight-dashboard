@@ -1806,8 +1806,9 @@
                                 <div class="text-slate-400 text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
                                 ${weekDays.map(date => {
                                     const dayEvents = getEventsForDateTime(date, hour);
+                                    const isToday = date.toDateString() === today.toDateString();
                                     return `
-                                        <div class="bg-slate-700/20 border border-slate-700/30 p-1 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
+                                        <div class="${isToday ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-700/20 border-slate-700/30'} border p-1 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
                                             ${dayEvents.map(e => `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
                                         </div>
                                     `;
