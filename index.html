@@ -881,6 +881,15 @@
                 await refreshData();
             }, 3600000);
 
+            // Refresh weather more frequently - every 30 minutes
+            setInterval(async () => {
+                console.log('Weather refresh triggered at', new Date().toLocaleTimeString());
+                await loadWeather();
+            }, 1800000);
+
+            // Schedule daily midnight refresh for fresh forecast data
+            scheduleMidnightRefresh();
+
             // Also refresh when page becomes visible again (e.g., switching tabs back)
             document.addEventListener('visibilitychange', async () => {
                 if (document.visibilityState === 'visible') {
@@ -897,6 +906,31 @@
             setInterval(checkHourlyChime, 30000);
 
             console.log('Event alert system initialized - checking every 30 seconds');
+        }
+
+        // Schedule a refresh at midnight for fresh daily forecast data
+        function scheduleMidnightRefresh() {
+            const now = new Date();
+            const midnight = new Date(now);
+            midnight.setHours(24, 0, 0, 0); // Next midnight
+            const msUntilMidnight = midnight - now;
+
+            setTimeout(async () => {
+                console.log('Midnight refresh triggered - fetching fresh forecast data');
+                await loadWeather();
+                await loadCalendarEvents();
+                renderCalendar();
+
+                // Schedule the next midnight refresh (every 24 hours)
+                setInterval(async () => {
+                    console.log('Daily midnight refresh triggered');
+                    await loadWeather();
+                    await loadCalendarEvents();
+                    renderCalendar();
+                }, 86400000); // 24 hours
+            }, msUntilMidnight);
+
+            console.log(`Midnight refresh scheduled in ${Math.round(msUntilMidnight / 60000)} minutes`);
         }
 
         // Clock
