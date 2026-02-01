@@ -1717,13 +1717,17 @@
 
             const dark = isDarkMode;
             container.innerHTML = `
-                <div class="h-full">
-                    <div class="grid grid-cols-7 gap-2 mb-4">
-                        ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d =>
-                            `<div class="text-center ${dark ? 'text-slate-400' : 'text-slate-500'} text-sm font-medium py-2">${d}</div>`
-                        ).join('')}
+                <div class="h-full flex flex-col">
+                    <div class="grid grid-cols-7 gap-2 sticky top-0 z-10 ${dark ? 'bg-slate-800/95' : 'bg-white/95'} backdrop-blur-sm pb-2">
+                        ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
+                            // Check if this day column contains today
+                            const todayDayOfWeek = today.getDay();
+                            const isCurrentDayColumn = i === todayDayOfWeek &&
+                                month === today.getMonth() && year === today.getFullYear();
+                            return `<div class="text-center text-sm font-medium py-2 ${isCurrentDayColumn ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')}">${d}</div>`;
+                        }).join('')}
                     </div>
-                    <div class="grid grid-cols-7 gap-2">
+                    <div class="grid grid-cols-7 gap-2 flex-1 overflow-auto">
                         ${days.map((item, index) => {
                             const dayEvents = item.isCurrentMonth ? getEventsForDay(item.day) : [];
                             const isToday = item.isCurrentMonth && item.day === today.getDate() &&
@@ -1787,20 +1791,20 @@
             const showTimeLine = todayIndex !== -1;
 
             container.innerHTML = `
-                <div class="h-full">
-                    <div class="grid grid-cols-8 gap-2 mb-4">
+                <div class="h-full flex flex-col">
+                    <div class="grid grid-cols-8 gap-2 pb-2 sticky top-0 z-10 bg-slate-800/95 backdrop-blur-sm">
                         <div class="w-16"></div>
                         ${weekDays.map(date => {
                             const isToday = date.toDateString() === today.toDateString();
                             return `
                                 <div class="text-center cursor-pointer" onclick="goToDay(${date.getTime()})">
-                                    <div class="text-slate-400 text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                    <div class="${isToday ? 'text-indigo-400' : 'text-slate-400'} text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                                     <div class="text-lg font-semibold mt-1 w-10 h-10 mx-auto flex items-center justify-center ${isToday ? 'bg-indigo-600 text-white' : 'text-white hover:bg-slate-700/30'}">${date.getDate()}</div>
                                 </div>
                             `;
                         }).join('')}
                     </div>
-                    <div id="week-time-grid" class="space-y-1 overflow-auto relative" style="max-height: calc(100% - 80px)">
+                    <div id="week-time-grid" class="space-y-1 overflow-auto relative flex-1">
                         ${hours.map(hour => `
                             <div class="grid grid-cols-8 gap-2 min-h-16 hour-row" data-hour="${hour}">
                                 <div class="text-slate-400 text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
@@ -1822,14 +1826,14 @@
                 </div>
             `;
 
-            // Position the time line if showing
+            // Position the time line if showing and scroll to it
             if (showTimeLine) {
-                updateWeekTimeIndicator();
+                updateWeekTimeIndicator(true);
             }
         }
 
         // Update the current time indicator line position
-        function updateWeekTimeIndicator() {
+        function updateWeekTimeIndicator(scrollToLine = false) {
             const timeLine = document.getElementById('current-time-line');
             const timeGrid = document.getElementById('week-time-grid');
             if (!timeLine || !timeGrid) return;
@@ -1863,10 +1867,15 @@
             const topPosition = (hourIndex * rowHeight) + minuteOffset;
 
             timeLine.style.top = `${topPosition}px`;
+
+            // Scroll to show the current time line
+            if (scrollToLine) {
+                timeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         // Update time indicator for day view
-        function updateDayTimeIndicator() {
+        function updateDayTimeIndicator(scrollToLine = false) {
             const timeLine = document.getElementById('day-time-line');
             const timeGrid = document.getElementById('day-time-grid');
             if (!timeLine || !timeGrid) return;
@@ -1900,6 +1909,11 @@
             const topPosition = (hourIndex * rowHeight) + minuteOffset;
 
             timeLine.style.top = `${topPosition}px`;
+
+            // Scroll to show the current time line
+            if (scrollToLine) {
+                timeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         function renderDayView(container) {
@@ -1908,12 +1922,12 @@
             const isToday = currentDate.toDateString() === today.toDateString();
 
             container.innerHTML = `
-                <div class="h-full">
-                    <div class="text-center mb-4 pb-4 border-b border-slate-700/50">
-                        <div class="text-slate-400 text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
-                        <div class="text-4xl font-light text-white mt-1">${currentDate.getDate()}</div>
+                <div class="h-full flex flex-col">
+                    <div class="text-center pb-4 border-b border-slate-700/50 sticky top-0 z-10 bg-slate-800/95 backdrop-blur-sm">
+                        <div class="${isToday ? 'text-indigo-400' : 'text-slate-400'} text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                        <div class="text-4xl font-light ${isToday ? 'text-indigo-400' : 'text-white'} mt-1">${currentDate.getDate()}</div>
                     </div>
-                    <div id="day-time-grid" class="space-y-1 overflow-auto relative" style="max-height: calc(100% - 120px)">
+                    <div id="day-time-grid" class="space-y-1 overflow-auto relative flex-1 mt-4">
                         ${hours.map(hour => {
                             const dayEvents = getEventsForDateTime(currentDate, hour, true);
                             return `
@@ -1937,9 +1951,9 @@
                 </div>
             `;
 
-            // Position the time line if showing today
+            // Position the time line if showing today and scroll to it
             if (isToday) {
-                updateDayTimeIndicator();
+                updateDayTimeIndicator(true);
             }
         }
 
