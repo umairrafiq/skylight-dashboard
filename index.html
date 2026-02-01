@@ -530,7 +530,7 @@
     </div>
 
     <!-- Main Layout -->
-    <div class="flex min-h-screen">
+    <div class="flex h-screen overflow-hidden">
         <!-- Left Sidebar -->
         <div id="sidebar" class="w-20 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 flex flex-col items-center py-8 gap-2 theme-transition">
             <div class="w-12 h-12 bg-indigo-600 flex items-center justify-center mb-8">
@@ -565,9 +565,9 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col p-6 overflow-hidden">
+        <div class="flex-1 flex flex-col p-6 h-full overflow-hidden">
             <!-- Weather and Time Header -->
-            <div id="main-header" class="main-header flex justify-between items-center mb-4">
+            <div id="main-header" class="main-header flex justify-between items-center mb-4 flex-shrink-0">
                 <div class="flex items-center gap-8">
                     <!-- Weather -->
                     <div class="flex items-center gap-3">
@@ -681,8 +681,8 @@
 
                 <!-- Todos Tab -->
                 <div id="tab-todos" class="h-full flex flex-col hidden">
-                    <div class="p-4 border-b border-slate-700/50">
-                        <h2 class="text-2xl font-semibold text-white">Tasks</h2>
+                    <div id="todos-header" class="p-4 border-b border-slate-700/50 theme-transition">
+                        <h2 class="text-2xl font-semibold theme-text">Tasks</h2>
                     </div>
                     <div id="todos-container" class="flex-1 p-4 overflow-auto">
                         <div id="todos-grid" class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
@@ -1376,11 +1376,17 @@
             // Sidebar buttons
             document.querySelectorAll('.sidebar-btn').forEach(btn => {
                 if (!btn.classList.contains('bg-indigo-600')) {
-                    btn.className = btn.className.replace(/bg-slate-\d+\/\d+|bg-white|hover:bg-slate-\d+\/\d+|hover:bg-slate-\d+|text-slate-\d+|text-gray-\d+/g, '');
+                    // Remove all theme-related classes
+                    btn.classList.remove(
+                        'bg-slate-800/50', 'bg-slate-100', 'bg-white',
+                        'hover:bg-slate-700/50', 'hover:bg-slate-200',
+                        'text-slate-400', 'text-slate-600', 'text-gray-600',
+                        'hover:text-white', 'hover:text-slate-800'
+                    );
                     if (dark) {
-                        btn.classList.add('bg-slate-800/50', 'hover:bg-slate-700/50', 'text-slate-400');
+                        btn.classList.add('bg-slate-800/50', 'hover:bg-slate-700/50', 'text-slate-400', 'hover:text-white');
                     } else {
-                        btn.classList.add('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600');
+                        btn.classList.add('bg-slate-100', 'hover:bg-slate-200', 'text-slate-600', 'hover:text-slate-800');
                     }
                 }
             });
@@ -1458,9 +1464,22 @@
                 themeIcon.textContent = dark ? '☀️' : '🌙';
             }
 
+            // Todos header
+            const todosHeader = document.getElementById('todos-header');
+            if (todosHeader) {
+                todosHeader.className = dark
+                    ? 'p-4 border-b border-slate-700/50 theme-transition'
+                    : 'p-4 border-b border-slate-200 theme-transition';
+            }
+
             // Re-render calendar to apply new theme
             if (typeof renderCalendar === 'function') {
                 renderCalendar();
+            }
+
+            // Re-render todos to apply new theme
+            if (typeof renderTodos === 'function') {
+                renderTodos();
             }
         }
 
@@ -1556,6 +1575,8 @@
             const container = document.getElementById('todos-grid');
             if (!container) return;
 
+            const dark = isDarkMode;
+
             container.innerHTML = todoLists.map(list => {
                 const items = allTodos[list.entity_id] || [];
                 const completed = items.filter(t => t.status === 'completed').length;
@@ -1563,23 +1584,23 @@
                 const progressPercent = total > 0 ? (completed / total) * 100 : 0;
 
                 return `
-                    <div class="flex flex-col bg-slate-800/50 border border-slate-700/50 overflow-hidden h-full" style="min-height: 300px; max-height: calc(100vh - 200px);">
+                    <div class="flex flex-col ${dark ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-slate-200'} border overflow-hidden h-full" style="min-height: 300px; max-height: calc(100vh - 200px);">
                         <!-- List Header -->
-                        <div class="p-3 border-b border-slate-700/50 flex items-center justify-between" style="background-color: ${list.color}20;">
+                        <div class="p-3 ${dark ? 'border-slate-700/50' : 'border-slate-200'} border-b flex items-center justify-between" style="background-color: ${list.color}20;">
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 rounded-sm" style="background-color: ${list.color}"></div>
-                                <span class="font-semibold text-white">${list.name}</span>
-                                <span class="text-xs text-slate-400">(${completed}/${total})</span>
+                                <span class="font-semibold ${dark ? 'text-white' : 'text-slate-800'}">${list.name}</span>
+                                <span class="text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}">(${completed}/${total})</span>
                             </div>
                         </div>
 
                         <!-- Add Task Input -->
-                        <div class="p-2 border-b border-slate-700/30">
+                        <div class="p-2 ${dark ? 'border-slate-700/30' : 'border-slate-200'} border-b">
                             <div class="flex gap-2">
                                 <input type="text"
                                     id="add-todo-${list.entity_id.replace('.', '-')}"
                                     placeholder="Add task..."
-                                    class="flex-1 px-3 py-2 bg-slate-700/50 border border-slate-600/50 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                                    class="flex-1 px-3 py-2 ${dark ? 'bg-slate-700/50 border-slate-600/50 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-800 placeholder-slate-400'} border text-sm focus:outline-none focus:ring-1 focus:ring-opacity-50"
                                     style="--tw-ring-color: ${list.color}"
                                     onkeypress="if(event.key==='Enter') addTodoToList('${list.entity_id}', this.value, this)">
                                 <button onclick="addTodoFromInput('${list.entity_id}')"
@@ -1591,18 +1612,18 @@
                         </div>
 
                         <!-- Progress Bar -->
-                        <div class="h-1 bg-slate-700/50">
+                        <div class="h-1 ${dark ? 'bg-slate-700/50' : 'bg-slate-200'}">
                             <div class="h-full transition-all duration-300" style="width: ${progressPercent}%; background-color: ${list.color}"></div>
                         </div>
 
                         <!-- Todo Items -->
                         <div class="flex-1 overflow-y-auto p-2 space-y-1">
                             ${items.length === 0 ? `
-                                <div class="text-center py-8 text-slate-500 text-sm">No tasks</div>
+                                <div class="text-center py-8 ${dark ? 'text-slate-500' : 'text-slate-400'} text-sm">No tasks</div>
                             ` : items.map((todo, index) => {
                                 const isCompleted = todo.status === 'completed';
                                 return `
-                                    <div class="todo-item p-2 cursor-pointer rounded ${isCompleted ? 'bg-slate-700/10 opacity-50' : 'bg-slate-700/30 hover:bg-slate-700/50'}"
+                                    <div class="todo-item p-2 cursor-pointer rounded ${isCompleted ? (dark ? 'bg-slate-700/10' : 'bg-slate-100/50') + ' opacity-50' : (dark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-100 hover:bg-slate-200')}"
                                          onclick="toggleTodo('${list.entity_id}', '${todo.uid}', ${isCompleted})"
                                          style="animation: fadeIn 0.2s ease-out forwards; animation-delay: ${index * 30}ms">
                                         <div class="flex items-center gap-2">
@@ -1611,7 +1632,7 @@
                                                 ${isCompleted ? '<svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="text-sm ${isCompleted ? 'text-slate-500 line-through' : 'text-white'} truncate">${todo.summary}</div>
+                                                <div class="text-sm ${isCompleted ? 'text-slate-500 line-through' : (dark ? 'text-white' : 'text-slate-800')} truncate">${todo.summary}</div>
                                             </div>
                                             <button onclick="event.stopPropagation(); deleteTodo('${list.entity_id}', '${todo.uid}')"
                                                 class="w-6 h-6 flex-shrink-0 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors">
@@ -1785,6 +1806,7 @@
 
             const hours = Array.from({ length: 15 }, (_, i) => i + 6);
             const today = new Date();
+            const dark = isDarkMode;
 
             // Check if current week contains today
             const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
@@ -1792,14 +1814,14 @@
 
             container.innerHTML = `
                 <div class="h-full flex flex-col">
-                    <div class="grid grid-cols-8 gap-2 pb-2 sticky top-0 z-10 bg-slate-800/95 backdrop-blur-sm">
+                    <div class="grid grid-cols-8 gap-2 pb-2 sticky top-0 z-10 ${dark ? 'bg-slate-800/95' : 'bg-white/95'} backdrop-blur-sm">
                         <div class="w-16"></div>
                         ${weekDays.map(date => {
                             const isToday = date.toDateString() === today.toDateString();
                             return `
                                 <div class="text-center cursor-pointer" onclick="goToDay(${date.getTime()})">
-                                    <div class="${isToday ? 'text-indigo-400' : 'text-slate-400'} text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                                    <div class="text-lg font-semibold mt-1 w-10 h-10 mx-auto flex items-center justify-center ${isToday ? 'bg-indigo-600 text-white' : 'text-white hover:bg-slate-700/30'}">${date.getDate()}</div>
+                                    <div class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                    <div class="text-lg font-semibold mt-1 w-10 h-10 mx-auto flex items-center justify-center ${isToday ? 'bg-indigo-600 text-white' : (dark ? 'text-white hover:bg-slate-700/30' : 'text-slate-800 hover:bg-slate-200')}">${date.getDate()}</div>
                                 </div>
                             `;
                         }).join('')}
@@ -1807,12 +1829,12 @@
                     <div id="week-time-grid" class="space-y-1 overflow-auto relative flex-1">
                         ${hours.map(hour => `
                             <div class="grid grid-cols-8 gap-2 min-h-16 hour-row" data-hour="${hour}">
-                                <div class="text-slate-400 text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
+                                <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
                                 ${weekDays.map(date => {
                                     const dayEvents = getEventsForDateTime(date, hour);
                                     const isToday = date.toDateString() === today.toDateString();
                                     return `
-                                        <div class="${isToday ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-700/20 border-slate-700/30'} border p-1 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
+                                        <div class="${isToday ? (dark ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-indigo-100 border-indigo-300') : (dark ? 'bg-slate-700/20 border-slate-700/30' : 'bg-slate-50 border-slate-200')} border p-1 cursor-pointer ${dark ? 'hover:bg-slate-700/40' : 'hover:bg-slate-100'}" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
                                             ${dayEvents.map(e => `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
                                         </div>
                                     `;
@@ -1920,20 +1942,21 @@
             const hours = Array.from({ length: 15 }, (_, i) => i + 6);
             const today = new Date();
             const isToday = currentDate.toDateString() === today.toDateString();
+            const dark = isDarkMode;
 
             container.innerHTML = `
                 <div class="h-full flex flex-col">
-                    <div class="text-center pb-4 border-b border-slate-700/50 sticky top-0 z-10 bg-slate-800/95 backdrop-blur-sm">
-                        <div class="${isToday ? 'text-indigo-400' : 'text-slate-400'} text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
-                        <div class="text-4xl font-light ${isToday ? 'text-indigo-400' : 'text-white'} mt-1">${currentDate.getDate()}</div>
+                    <div class="text-center pb-4 ${dark ? 'border-slate-700/50 bg-slate-800/95' : 'border-slate-200 bg-white/95'} border-b sticky top-0 z-10 backdrop-blur-sm">
+                        <div class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                        <div class="text-4xl font-light ${isToday ? 'text-indigo-400' : (dark ? 'text-white' : 'text-slate-800')} mt-1">${currentDate.getDate()}</div>
                     </div>
                     <div id="day-time-grid" class="space-y-1 overflow-auto relative flex-1 mt-4">
                         ${hours.map(hour => {
                             const dayEvents = getEventsForDateTime(currentDate, hour, true);
                             return `
                                 <div class="flex gap-4 min-h-16 hour-row" data-hour="${hour}">
-                                    <div class="text-slate-400 text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
-                                    <div class="flex-1 bg-slate-700/20 border border-slate-700/30 p-2 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${currentDate.getTime()}, ${hour})">
+                                    <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
+                                    <div class="flex-1 ${dark ? 'bg-slate-700/20 border-slate-700/30 hover:bg-slate-700/40' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'} border p-2 cursor-pointer" onclick="openEventModalForTime(${currentDate.getTime()}, ${hour})">
                                         ${dayEvents.map(e => `
                                             <div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="p-2 text-white text-sm mb-1 cursor-pointer hover:opacity-80 transition-opacity" style="background-color: ${e.color}">
                                                 <div class="font-medium">${e.summary}</div>
