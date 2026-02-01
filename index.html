@@ -702,8 +702,8 @@
     <script>
         // State
         let currentDate = new Date();
-        let currentView = 'month';
-        let activeTab = 'calendar';
+        let currentView = localStorage.getItem('currentView') || 'month';
+        let activeTab = localStorage.getItem('activeTab') || 'calendar';
         let events = [];
         let isDarkMode = true;
 
@@ -869,6 +869,11 @@
             await loadWeather();
             await loadCalendarEvents();
             await loadTodos();
+
+            // Restore saved UI settings
+            setView(currentView);
+            setActiveTab(activeTab);
+
             renderCalendar();
 
             // Check for upcoming events every 30 seconds
@@ -905,7 +910,19 @@
             // Check for hourly chime every 30 seconds
             setInterval(checkHourlyChime, 30000);
 
+            // Update time indicator every minute
+            setInterval(updateTimeIndicators, 60000);
+
             console.log('Event alert system initialized - checking every 30 seconds');
+        }
+
+        // Update time indicators in week/day views
+        function updateTimeIndicators() {
+            if (currentView === 'week') {
+                updateWeekTimeIndicator();
+            } else if (currentView === 'day') {
+                updateDayTimeIndicator();
+            }
         }
 
         // Schedule a refresh at midnight for fresh daily forecast data
@@ -1765,6 +1782,10 @@
             const hours = Array.from({ length: 15 }, (_, i) => i + 6);
             const today = new Date();
 
+            // Check if current week contains today
+            const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
+            const showTimeLine = todayIndex !== -1;
+
             container.innerHTML = `
                 <div class="h-full">
                     <div class="grid grid-cols-8 gap-2 mb-4">
@@ -1779,9 +1800,9 @@
                             `;
                         }).join('')}
                     </div>
-                    <div class="space-y-1 overflow-auto" style="max-height: calc(100% - 80px)">
+                    <div id="week-time-grid" class="space-y-1 overflow-auto relative" style="max-height: calc(100% - 80px)">
                         ${hours.map(hour => `
-                            <div class="grid grid-cols-8 gap-2 min-h-16">
+                            <div class="grid grid-cols-8 gap-2 min-h-16 hour-row" data-hour="${hour}">
                                 <div class="text-slate-400 text-xs w-16 text-right pr-2 pt-1">${formatHour(hour)}</div>
                                 ${weekDays.map(date => {
                                     const dayEvents = getEventsForDateTime(date, hour);
@@ -1793,13 +1814,97 @@
                                 }).join('')}
                             </div>
                         `).join('')}
+                        ${showTimeLine ? `<div id="current-time-line" class="absolute pointer-events-none" style="left: 0; right: 0; height: 2px; background: #ef4444; z-index: 10;">
+                            <div class="absolute -left-1 -top-1 w-3 h-3 rounded-full bg-red-500"></div>
+                        </div>` : ''}
                     </div>
                 </div>
             `;
+
+            // Position the time line if showing
+            if (showTimeLine) {
+                updateWeekTimeIndicator();
+            }
+        }
+
+        // Update the current time indicator line position
+        function updateWeekTimeIndicator() {
+            const timeLine = document.getElementById('current-time-line');
+            const timeGrid = document.getElementById('week-time-grid');
+            if (!timeLine || !timeGrid) return;
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinutes = now.getMinutes();
+
+            // Grid shows hours 6-20 (6 AM to 8 PM)
+            const startHour = 6;
+            const endHour = 20;
+
+            // Check if current time is within the displayed range
+            if (currentHour < startHour || currentHour > endHour) {
+                timeLine.style.display = 'none';
+                return;
+            }
+
+            timeLine.style.display = 'block';
+
+            // Find the hour rows to calculate position
+            const hourRows = timeGrid.querySelectorAll('.hour-row');
+            if (hourRows.length === 0) return;
+
+            const firstRow = hourRows[0];
+            const rowHeight = firstRow.offsetHeight + 4; // Include gap
+
+            // Calculate which row we're in and offset within that row
+            const hourIndex = currentHour - startHour;
+            const minuteOffset = (currentMinutes / 60) * rowHeight;
+            const topPosition = (hourIndex * rowHeight) + minuteOffset;
+
+            timeLine.style.top = `${topPosition}px`;
+        }
+
+        // Update time indicator for day view
+        function updateDayTimeIndicator() {
+            const timeLine = document.getElementById('day-time-line');
+            const timeGrid = document.getElementById('day-time-grid');
+            if (!timeLine || !timeGrid) return;
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinutes = now.getMinutes();
+
+            // Grid shows hours 6-20 (6 AM to 8 PM)
+            const startHour = 6;
+            const endHour = 20;
+
+            // Check if current time is within the displayed range
+            if (currentHour < startHour || currentHour > endHour) {
+                timeLine.style.display = 'none';
+                return;
+            }
+
+            timeLine.style.display = 'block';
+
+            // Find the hour rows to calculate position
+            const hourRows = timeGrid.querySelectorAll('.hour-row');
+            if (hourRows.length === 0) return;
+
+            const firstRow = hourRows[0];
+            const rowHeight = firstRow.offsetHeight + 4; // Include gap
+
+            // Calculate which row we're in and offset within that row
+            const hourIndex = currentHour - startHour;
+            const minuteOffset = (currentMinutes / 60) * rowHeight;
+            const topPosition = (hourIndex * rowHeight) + minuteOffset;
+
+            timeLine.style.top = `${topPosition}px`;
         }
 
         function renderDayView(container) {
             const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+            const today = new Date();
+            const isToday = currentDate.toDateString() === today.toDateString();
 
             container.innerHTML = `
                 <div class="h-full">
@@ -1807,11 +1912,11 @@
                         <div class="text-slate-400 text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
                         <div class="text-4xl font-light text-white mt-1">${currentDate.getDate()}</div>
                     </div>
-                    <div class="space-y-1 overflow-auto" style="max-height: calc(100% - 120px)">
+                    <div id="day-time-grid" class="space-y-1 overflow-auto relative" style="max-height: calc(100% - 120px)">
                         ${hours.map(hour => {
                             const dayEvents = getEventsForDateTime(currentDate, hour, true);
                             return `
-                                <div class="flex gap-4 min-h-16">
+                                <div class="flex gap-4 min-h-16 hour-row" data-hour="${hour}">
                                     <div class="text-slate-400 text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
                                     <div class="flex-1 bg-slate-700/20 border border-slate-700/30 p-2 cursor-pointer hover:bg-slate-700/40" onclick="openEventModalForTime(${currentDate.getTime()}, ${hour})">
                                         ${dayEvents.map(e => `
@@ -1824,9 +1929,17 @@
                                 </div>
                             `;
                         }).join('')}
+                        ${isToday ? `<div id="day-time-line" class="absolute pointer-events-none" style="left: 0; right: 0; height: 2px; background: #ef4444; z-index: 10;">
+                            <div class="absolute -left-1 -top-1 w-3 h-3 rounded-full bg-red-500"></div>
+                        </div>` : ''}
                     </div>
                 </div>
             `;
+
+            // Position the time line if showing today
+            if (isToday) {
+                updateDayTimeIndicator();
+            }
         }
 
         function getEventsForDay(day) {
@@ -1904,6 +2017,7 @@
         // Views
         function setView(view) {
             currentView = view;
+            localStorage.setItem('currentView', view);
             ['month', 'week', 'day'].forEach(v => {
                 const btn = document.getElementById(`view-${v}`);
                 if (v === view) {
@@ -1918,6 +2032,7 @@
         // Tabs
         function setActiveTab(tab) {
             activeTab = tab;
+            localStorage.setItem('activeTab', tab);
             ['calendar', 'todos', 'controls'].forEach(t => {
                 const tabEl = document.getElementById(`tab-${t}`);
                 const btnEl = document.getElementById(`btn-${t}`);
