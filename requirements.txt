@@ -1,0 +1,7 @@
+# Skylight Dashboard Python Dependencies
+
+# MQTT client for Home Assistant integration
+paho-mqtt>=2.0.0
+
+# WebSocket server for MQTT-to-browser bridge
+websockets>=12.0

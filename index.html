@@ -208,6 +208,59 @@
         </div>
     </div>
 
+    <!-- Camera Overlay (for doorbell/security cameras) -->
+    <div id="cameraOverlay" class="fixed inset-0 bg-black/95 z-[70] hidden flex items-center justify-center">
+        <!-- Camera title -->
+        <div id="camera-title" class="absolute top-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-6 py-3 rounded-full">
+            <span class="text-white text-lg font-medium">Front Door</span>
+        </div>
+
+        <!-- Camera stream container -->
+        <div id="camera-container" class="relative w-full h-full flex items-center justify-center p-12">
+            <!-- Loading spinner -->
+            <div id="camera-loading" class="absolute inset-0 flex items-center justify-center">
+                <div class="flex flex-col items-center gap-4">
+                    <svg class="w-12 h-12 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span class="text-white text-lg">Loading camera...</span>
+                </div>
+            </div>
+
+            <!-- Camera image (for MJPEG stream or snapshots) -->
+            <img id="camera-stream" class="max-w-full max-h-full object-contain hidden rounded-lg shadow-2xl" alt="Camera feed">
+
+            <!-- Error message -->
+            <div id="camera-error" class="hidden text-center">
+                <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <p class="text-white text-lg">Camera unavailable</p>
+                <p class="text-slate-400 text-sm mt-2">Could not load camera stream</p>
+            </div>
+        </div>
+
+        <!-- Countdown timer -->
+        <div id="camera-countdown" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-4 py-2 rounded-full">
+            <span class="text-white text-sm">Closing in <span id="camera-seconds">30</span>s</span>
+        </div>
+
+        <!-- Close button -->
+        <button onclick="cameraViewer.hide()" class="absolute top-6 right-6 w-12 h-12 bg-white/20 hover:bg-white/30 backdrop-blur rounded-full flex items-center justify-center text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+
+        <!-- Fullscreen toggle -->
+        <button onclick="cameraViewer.toggleFullscreen()" class="absolute top-6 right-24 w-12 h-12 bg-white/20 hover:bg-white/30 backdrop-blur rounded-full flex items-center justify-center text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+            </svg>
+        </button>
+    </div>
+
     <!-- Screensaver Settings Modal -->
     <div id="screensaverSettingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
         <div class="bg-slate-800 p-6 w-full max-w-lg border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -388,6 +441,81 @@
 
                         <div id="ss-connection-status" class="text-sm hidden"></div>
                     </div>
+                </div>
+
+                <!-- MQTT Integration -->
+                <div class="border-t border-slate-700 pt-6">
+                    <h4 class="text-white font-medium mb-4">Home Assistant Integration</h4>
+
+                    <!-- Connection Status -->
+                    <div class="bg-slate-900/50 rounded-lg p-4 mb-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-slate-400">WebSocket Bridge</span>
+                            <span id="mqtt-ws-status" class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                <span class="text-slate-400 text-sm">Checking...</span>
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">MQTT Broker</span>
+                            <span id="mqtt-broker-status" class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                <span class="text-slate-400 text-sm">Unknown</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-500 mb-4">
+                        MQTT allows Home Assistant to send commands to this dashboard (wake on motion, doorbell camera, TTS announcements).
+                        Configure MQTT in <code class="bg-slate-700 px-1 rounded">config.py</code> on the server.
+                    </p>
+
+                    <!-- Test Commands -->
+                    <div class="space-y-3">
+                        <div class="text-sm text-slate-400 mb-2">Test Commands</div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="testMQTTCommand('wake')" class="py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors rounded">
+                                Wake Screen
+                            </button>
+                            <button onclick="testMQTTCommand('screensaver')" class="py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors rounded">
+                                Start Screensaver
+                            </button>
+                            <button onclick="testMQTTCommand('speak')" class="py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors rounded">
+                                Test TTS
+                            </button>
+                            <button onclick="testMQTTCommand('doorbell')" class="py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors rounded">
+                                Test Doorbell
+                            </button>
+                        </div>
+
+                        <div id="mqtt-test-status" class="text-sm text-center hidden py-2 rounded"></div>
+                    </div>
+
+                    <!-- MQTT Topics Reference -->
+                    <details class="mt-4">
+                        <summary class="text-sm text-slate-400 cursor-pointer hover:text-slate-300">MQTT Topic Reference</summary>
+                        <div class="mt-3 bg-slate-900/50 rounded-lg p-3 text-xs font-mono space-y-2">
+                            <div>
+                                <span class="text-slate-500">Command:</span>
+                                <span class="text-emerald-400">skylight/{device_id}/command</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">State:</span>
+                                <span class="text-blue-400">skylight/{device_id}/state</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Availability:</span>
+                                <span class="text-amber-400">skylight/{device_id}/availability</span>
+                            </div>
+                            <div class="pt-2 border-t border-slate-700 mt-2">
+                                <div class="text-slate-400 mb-2">Example Commands:</div>
+                                <code class="block text-slate-300 whitespace-pre-wrap">{"command": "wake"}
+{"command": "speak", "message": "Hello!", "alarm": true}
+{"command": "show_camera", "entity_id": "camera.doorbell", "title": "Front Door"}</code>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
         </div>
@@ -907,6 +1035,12 @@
             // Initialize screensaver system
             initScreensaver();
 
+            // Initialize camera viewer for doorbell/security cameras
+            initCameraViewer();
+
+            // Initialize MQTT bridge for Home Assistant integration
+            initMQTTBridge();
+
             // Check for hourly chime every 30 seconds
             setInterval(checkHourlyChime, 30000);
 
@@ -1090,6 +1224,9 @@
             if (alarmGainNode) {
                 alarmGainNode.gain.setValueAtTime(alarmVolume * 0.5, alarmAudioContext.currentTime);
             }
+
+            // Notify MQTT bridge of volume change
+            if (mqttBridge) mqttBridge.notifyStateChange();
 
             console.log('Alarm volume set to:', alarmVolume);
         }
@@ -2083,6 +2220,9 @@
                     btnEl.className = 'sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white';
                 }
             });
+
+            // Notify MQTT bridge of tab change
+            if (mqttBridge) mqttBridge.notifyStateChange();
         }
 
         // Event Modal
@@ -3150,6 +3290,9 @@
                 console.log('Starting screensaver...');
                 this.isActive = true;
 
+                // Notify MQTT bridge of state change
+                if (mqttBridge) mqttBridge.notifyStateChange();
+
                 // Show overlay and loading
                 this.overlay.classList.remove('hidden');
                 this.loadingEl.classList.remove('hidden');
@@ -3316,6 +3459,9 @@
                     this.bg1.classList.remove(cls);
                     this.bg2.classList.remove(cls);
                 });
+
+                // Notify MQTT bridge of state change
+                if (mqttBridge) mqttBridge.notifyStateChange();
             }
         }
 
@@ -3343,6 +3489,9 @@
             document.getElementById('ss-chime-end').value = screensaverSettings.hourlyChimeEnd;
 
             toggleProviderConfig(screensaverSettings.providerType);
+
+            // Update MQTT status when opening settings
+            updateMQTTStatus();
 
             document.getElementById('screensaverSettingsModal').classList.remove('hidden');
         }
@@ -3431,6 +3580,586 @@
         }
 
         // ==================== END SCREENSAVER SYSTEM ====================
+
+        // ==================== MQTT BRIDGE SYSTEM ====================
+
+        class MQTTBridge {
+            constructor() {
+                this.ws = null;
+                this.connected = false;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 10;
+                this.reconnectDelay = 2000;
+                this.wsPort = 8766; // Must match WS_PORT in config.py
+            }
+
+            connect() {
+                try {
+                    this.ws = new WebSocket(`ws://localhost:${this.wsPort}`);
+
+                    this.ws.onopen = () => {
+                        console.log('MQTT Bridge: Connected to WebSocket server');
+                        this.connected = true;
+                        this.reconnectAttempts = 0;
+                        // Send initial state
+                        this.sendState();
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log('MQTT Bridge: Disconnected');
+                        this.connected = false;
+                        this.scheduleReconnect();
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.log('MQTT Bridge: WebSocket error (server may not be running with MQTT enabled)');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleMessage(event.data);
+                    };
+                } catch (e) {
+                    console.log('MQTT Bridge: Failed to connect:', e.message);
+                    this.scheduleReconnect();
+                }
+            }
+
+            scheduleReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 5);
+                    console.log(`MQTT Bridge: Reconnecting in ${delay/1000}s (attempt ${this.reconnectAttempts})`);
+                    setTimeout(() => this.connect(), delay);
+                } else {
+                    console.log('MQTT Bridge: Max reconnect attempts reached, giving up');
+                }
+            }
+
+            handleMessage(data) {
+                try {
+                    const cmd = JSON.parse(data);
+                    const command = cmd.command;
+
+                    console.log('MQTT Bridge: Received command:', command);
+
+                    switch (command) {
+                        case 'wake':
+                            // Exit screensaver
+                            if (screensaverController?.isActive) {
+                                screensaverController.wake('mqtt');
+                            }
+                            break;
+
+                        case 'speak':
+                            // Text-to-speech with optional alarm
+                            this.handleSpeak(cmd);
+                            break;
+
+                        case 'reload':
+                            // Refresh the dashboard
+                            location.reload();
+                            break;
+
+                        case 'screensaver':
+                            // Toggle screensaver
+                            if (cmd.enabled) {
+                                if (screensaverController && !screensaverController.isActive) {
+                                    screensaverController.start();
+                                }
+                            } else {
+                                if (screensaverController?.isActive) {
+                                    screensaverController.wake('mqtt');
+                                }
+                            }
+                            this.sendState();
+                            break;
+
+                        case 'navigate':
+                            // Switch tab
+                            const tab = cmd.tab;
+                            if (['calendar', 'todos', 'controls'].includes(tab)) {
+                                setActiveTab(tab);
+                                // Wake screensaver if active
+                                if (screensaverController?.isActive) {
+                                    screensaverController.wake('mqtt');
+                                }
+                                this.sendState();
+                            }
+                            break;
+
+                        case 'volume':
+                            // Set volume
+                            const volume = Math.max(0, Math.min(100, cmd.value || 70));
+                            setAlarmVolume(volume);
+                            // Update slider if exists
+                            const slider = document.getElementById('alarm-volume');
+                            if (slider) slider.value = volume;
+                            this.sendState();
+                            break;
+
+                        case 'show_camera':
+                            // Show camera feed (e.g., doorbell camera)
+                            if (cameraViewer && cmd.entity_id) {
+                                cameraViewer.show({
+                                    entity_id: cmd.entity_id,
+                                    title: cmd.title || 'Camera',
+                                    duration: cmd.duration || 30,
+                                    sound: cmd.sound !== false // default true
+                                });
+                            }
+                            break;
+
+                        case 'hide_camera':
+                            // Hide camera overlay
+                            if (cameraViewer) {
+                                cameraViewer.hide();
+                            }
+                            break;
+
+                        default:
+                            console.log('MQTT Bridge: Unknown command:', command);
+                    }
+                } catch (e) {
+                    console.error('MQTT Bridge: Error handling message:', e);
+                }
+            }
+
+            handleSpeak(cmd) {
+                const message = cmd.message || '';
+                const playAlarm = cmd.alarm === true;
+                const volume = cmd.volume;
+
+                // Set volume if specified
+                if (typeof volume === 'number') {
+                    setAlarmVolume(Math.max(0, Math.min(100, volume)));
+                }
+
+                // Wake screensaver first
+                if (screensaverController?.isActive) {
+                    screensaverController.wake('mqtt');
+                }
+
+                // Play alarm sound if requested
+                if (playAlarm) {
+                    this.playMQTTAlarm();
+                    // Speak after alarm sound (delay to let alarm play)
+                    if (message) {
+                        setTimeout(() => speakText(message), 1500);
+                    }
+                } else if (message) {
+                    speakText(message);
+                }
+            }
+
+            playMQTTAlarm() {
+                // Play a short attention-getting sound
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const now = audioContext.currentTime;
+
+                    const playTone = (freq, startTime, duration, vol = 0.4) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0, startTime);
+                        gain.gain.linearRampToValueAtTime(vol * alarmVolume, startTime + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                        osc.start(startTime);
+                        osc.stop(startTime + duration);
+                    };
+
+                    // Attention-getting two-tone alert
+                    playTone(880, now, 0.15);        // A5
+                    playTone(1100, now + 0.15, 0.15); // ~C#6
+                    playTone(880, now + 0.3, 0.15);   // A5
+                    playTone(1100, now + 0.45, 0.3);  // ~C#6 (longer)
+
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                } catch (e) {
+                    console.error('MQTT Bridge: Error playing alarm:', e);
+                }
+            }
+
+            sendState() {
+                if (!this.connected || !this.ws) return;
+
+                const state = {
+                    screensaver_active: screensaverController?.isActive || false,
+                    camera_active: cameraViewer?.isActive || false,
+                    current_tab: activeTab || 'calendar',
+                    volume: Math.round(alarmVolume * 100)
+                };
+
+                try {
+                    this.ws.send(JSON.stringify({
+                        type: 'state_update',
+                        state: state
+                    }));
+                } catch (e) {
+                    console.error('MQTT Bridge: Error sending state:', e);
+                }
+            }
+
+            // Call this when state changes to keep HA in sync
+            notifyStateChange() {
+                this.sendState();
+            }
+        }
+
+        // Global MQTT bridge instance
+        let mqttBridge = null;
+
+        function initMQTTBridge() {
+            mqttBridge = new MQTTBridge();
+            mqttBridge.connect();
+            console.log('MQTT Bridge initialized');
+
+            // Update status display periodically
+            setInterval(updateMQTTStatus, 5000);
+        }
+
+        // Update MQTT connection status in settings
+        function updateMQTTStatus() {
+            const wsStatusEl = document.getElementById('mqtt-ws-status');
+            if (!wsStatusEl) return;
+
+            const isConnected = mqttBridge?.connected || false;
+            const dot = wsStatusEl.querySelector('span:first-child');
+            const text = wsStatusEl.querySelector('span:last-child');
+
+            if (isConnected) {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                text.className = 'text-emerald-400 text-sm';
+                text.textContent = 'Connected';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                text.className = 'text-red-400 text-sm';
+                text.textContent = 'Disconnected';
+            }
+
+            // Broker status is unknown from frontend (would need server endpoint)
+            const brokerStatusEl = document.getElementById('mqtt-broker-status');
+            if (brokerStatusEl && isConnected) {
+                const brokerDot = brokerStatusEl.querySelector('span:first-child');
+                const brokerText = brokerStatusEl.querySelector('span:last-child');
+                brokerDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                brokerText.className = 'text-emerald-400 text-sm';
+                brokerText.textContent = 'Connected via server';
+            }
+        }
+
+        // Test MQTT commands from settings
+        function testMQTTCommand(command) {
+            const statusEl = document.getElementById('mqtt-test-status');
+
+            if (!mqttBridge?.connected) {
+                statusEl.textContent = 'WebSocket not connected. Is the server running with MQTT enabled?';
+                statusEl.className = 'text-sm text-center py-2 rounded bg-red-900/50 text-red-400';
+                statusEl.classList.remove('hidden');
+                setTimeout(() => statusEl.classList.add('hidden'), 3000);
+                return;
+            }
+
+            switch (command) {
+                case 'wake':
+                    if (screensaverController?.isActive) {
+                        screensaverController.wake('test');
+                        showTestStatus('Screensaver dismissed', 'success');
+                    } else {
+                        showTestStatus('Screensaver not active', 'info');
+                    }
+                    break;
+
+                case 'screensaver':
+                    if (!screensaverController?.isActive) {
+                        screensaverController?.start();
+                        showTestStatus('Screensaver started', 'success');
+                    } else {
+                        showTestStatus('Screensaver already active', 'info');
+                    }
+                    break;
+
+                case 'speak':
+                    speakText('This is a test message from the Skylight Dashboard.');
+                    showTestStatus('TTS message sent', 'success');
+                    break;
+
+                case 'doorbell':
+                    // Simulate doorbell camera (use a test entity or just show the overlay)
+                    if (cameraViewer) {
+                        cameraViewer.playDoorbellSound();
+                        showTestStatus('Doorbell sound played', 'success');
+                    }
+                    break;
+            }
+        }
+
+        function showTestStatus(message, type) {
+            const statusEl = document.getElementById('mqtt-test-status');
+            statusEl.textContent = message;
+
+            if (type === 'success') {
+                statusEl.className = 'text-sm text-center py-2 rounded bg-emerald-900/50 text-emerald-400';
+            } else if (type === 'error') {
+                statusEl.className = 'text-sm text-center py-2 rounded bg-red-900/50 text-red-400';
+            } else {
+                statusEl.className = 'text-sm text-center py-2 rounded bg-slate-700 text-slate-300';
+            }
+
+            statusEl.classList.remove('hidden');
+            setTimeout(() => statusEl.classList.add('hidden'), 3000);
+        }
+
+        // ==================== END MQTT BRIDGE SYSTEM ====================
+
+        // ==================== CAMERA VIEWER SYSTEM ====================
+
+        class CameraViewer {
+            constructor() {
+                this.overlay = document.getElementById('cameraOverlay');
+                this.titleEl = document.getElementById('camera-title').querySelector('span');
+                this.streamEl = document.getElementById('camera-stream');
+                this.loadingEl = document.getElementById('camera-loading');
+                this.errorEl = document.getElementById('camera-error');
+                this.countdownEl = document.getElementById('camera-seconds');
+                this.countdownContainer = document.getElementById('camera-countdown');
+
+                this.isActive = false;
+                this.countdownTimer = null;
+                this.refreshTimer = null;
+                this.remainingSeconds = 0;
+                this.currentEntityId = null;
+            }
+
+            show(options = {}) {
+                const {
+                    entity_id,
+                    title = 'Camera',
+                    duration = 30,
+                    sound = true
+                } = options;
+
+                if (!entity_id) {
+                    console.error('CameraViewer: No entity_id provided');
+                    return;
+                }
+
+                console.log(`CameraViewer: Showing camera ${entity_id} for ${duration}s`);
+
+                // Wake screensaver if active
+                if (screensaverController?.isActive) {
+                    screensaverController.wake('camera');
+                }
+
+                // Play doorbell sound if requested
+                if (sound) {
+                    this.playDoorbellSound();
+                }
+
+                this.currentEntityId = entity_id;
+                this.isActive = true;
+
+                // Update title
+                this.titleEl.textContent = title;
+
+                // Show overlay and loading state
+                this.overlay.classList.remove('hidden');
+                this.loadingEl.classList.remove('hidden');
+                this.streamEl.classList.add('hidden');
+                this.errorEl.classList.add('hidden');
+
+                // Start loading the camera stream
+                this.loadCameraStream(entity_id);
+
+                // Start countdown
+                this.startCountdown(duration);
+
+                // Notify MQTT bridge
+                if (mqttBridge) mqttBridge.notifyStateChange();
+            }
+
+            hide() {
+                console.log('CameraViewer: Hiding camera');
+
+                this.isActive = false;
+                this.currentEntityId = null;
+
+                // Stop timers
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer);
+                    this.countdownTimer = null;
+                }
+                if (this.refreshTimer) {
+                    clearInterval(this.refreshTimer);
+                    this.refreshTimer = null;
+                }
+
+                // Hide overlay
+                this.overlay.classList.add('hidden');
+
+                // Clear stream
+                this.streamEl.src = '';
+
+                // Notify MQTT bridge
+                if (mqttBridge) mqttBridge.notifyStateChange();
+            }
+
+            async loadCameraStream(entity_id) {
+                try {
+                    // Use Home Assistant's camera proxy for the stream
+                    // This works with MJPEG streams and provides periodic snapshots
+                    const streamUrl = `/api/camera_proxy_stream/${entity_id}`;
+
+                    // Set up error handling
+                    this.streamEl.onerror = () => {
+                        console.log('CameraViewer: Stream error, trying snapshot mode');
+                        this.loadCameraSnapshot(entity_id);
+                    };
+
+                    this.streamEl.onload = () => {
+                        this.loadingEl.classList.add('hidden');
+                        this.streamEl.classList.remove('hidden');
+                    };
+
+                    // Try loading the stream
+                    this.streamEl.src = streamUrl;
+
+                    // Set a timeout for loading
+                    setTimeout(() => {
+                        if (this.loadingEl.classList.contains('hidden') === false && this.isActive) {
+                            // Still loading after 5 seconds, try snapshot mode
+                            console.log('CameraViewer: Stream timeout, trying snapshot mode');
+                            this.loadCameraSnapshot(entity_id);
+                        }
+                    }, 5000);
+
+                } catch (e) {
+                    console.error('CameraViewer: Error loading stream:', e);
+                    this.showError();
+                }
+            }
+
+            async loadCameraSnapshot(entity_id) {
+                try {
+                    // Use snapshot endpoint instead
+                    const snapshotUrl = `/api/camera_proxy/${entity_id}?time=${Date.now()}`;
+
+                    this.streamEl.onerror = () => {
+                        console.error('CameraViewer: Snapshot error');
+                        this.showError();
+                    };
+
+                    this.streamEl.onload = () => {
+                        this.loadingEl.classList.add('hidden');
+                        this.streamEl.classList.remove('hidden');
+                    };
+
+                    this.streamEl.src = snapshotUrl;
+
+                    // Refresh snapshot every 2 seconds for pseudo-live view
+                    if (this.refreshTimer) clearInterval(this.refreshTimer);
+                    this.refreshTimer = setInterval(() => {
+                        if (this.isActive) {
+                            this.streamEl.src = `/api/camera_proxy/${entity_id}?time=${Date.now()}`;
+                        }
+                    }, 2000);
+
+                } catch (e) {
+                    console.error('CameraViewer: Error loading snapshot:', e);
+                    this.showError();
+                }
+            }
+
+            showError() {
+                this.loadingEl.classList.add('hidden');
+                this.streamEl.classList.add('hidden');
+                this.errorEl.classList.remove('hidden');
+            }
+
+            startCountdown(seconds) {
+                this.remainingSeconds = seconds;
+                this.countdownEl.textContent = seconds;
+                this.countdownContainer.classList.remove('hidden');
+
+                if (this.countdownTimer) clearInterval(this.countdownTimer);
+
+                this.countdownTimer = setInterval(() => {
+                    this.remainingSeconds--;
+                    this.countdownEl.textContent = this.remainingSeconds;
+
+                    if (this.remainingSeconds <= 0) {
+                        this.hide();
+                    }
+                }, 1000);
+            }
+
+            resetCountdown(seconds = 30) {
+                this.remainingSeconds = seconds;
+                this.countdownEl.textContent = seconds;
+            }
+
+            playDoorbellSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const now = audioContext.currentTime;
+
+                    const playTone = (freq, startTime, duration, vol = 0.4) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0, startTime);
+                        gain.gain.linearRampToValueAtTime(vol * alarmVolume, startTime + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                        osc.start(startTime);
+                        osc.stop(startTime + duration);
+                    };
+
+                    // Classic doorbell "ding-dong" pattern
+                    playTone(932, now, 0.4, 0.5);        // Bb5 (ding)
+                    playTone(698, now + 0.4, 0.6, 0.5);  // F5 (dong)
+
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                } catch (e) {
+                    console.error('CameraViewer: Error playing doorbell sound:', e);
+                }
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    this.overlay.requestFullscreen().catch(e => {
+                        console.log('CameraViewer: Fullscreen not supported');
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            // Extend duration (useful when interacting)
+            extend(additionalSeconds = 30) {
+                this.remainingSeconds += additionalSeconds;
+                this.countdownEl.textContent = this.remainingSeconds;
+            }
+        }
+
+        // Global camera viewer instance
+        let cameraViewer = null;
+
+        function initCameraViewer() {
+            cameraViewer = new CameraViewer();
+            console.log('Camera viewer initialized');
+        }
+
+        // ==================== END CAMERA VIEWER SYSTEM ====================
 
         // ==================== HOURLY CHIME SYSTEM ====================
 

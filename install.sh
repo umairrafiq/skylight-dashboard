@@ -11,6 +11,15 @@ ICONS_DIR="$HOME/.local/share/icons"
 
 echo "Installing Skylight Dashboard..."
 
+# Install Python dependencies
+if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+    echo "Installing Python dependencies..."
+    pip3 install --user -r "$SCRIPT_DIR/requirements.txt" 2>/dev/null || \
+    pip install --user -r "$SCRIPT_DIR/requirements.txt" 2>/dev/null || \
+    echo "Warning: Could not install Python dependencies. MQTT features may not work."
+    echo "You can manually install with: pip install paho-mqtt websockets"
+fi
+
 # Make launcher executable
 chmod +x "$LAUNCHER"
 echo "Made launcher executable"
