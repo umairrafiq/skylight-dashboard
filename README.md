@@ -18,6 +18,9 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - **Screensaver Slideshow** - Full-screen photo slideshow with Ken Burns effect
 - **Photo Sources** - Local folders, SMB mounts, or Synology Photos
 - **Hourly Chime** - Westminster-style chime with optional time announcement
+- **MQTT Integration** - Two-way communication with Home Assistant
+- **Camera Popups** - Show doorbell/security cameras with sound alerts
+- **Wake on Motion** - Wake screen via Home Assistant automations
 
 ## Screenshots
 
@@ -31,6 +34,7 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - Python 3.x
 - Modern web browser
 - (Optional) Piper TTS add-on for voice announcements
+- (Optional) MQTT broker for remote control (usually included with Home Assistant)
 
 ## Installation
 
@@ -41,7 +45,13 @@ git clone https://github.com/umairrafiq/skylight-dashboard.git
 cd skylight-dashboard
 ```
 
-### 2. Configure Home Assistant connection
+### 2. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure Home Assistant connection
 
 ```bash
 cp config.example.py config.py
@@ -61,13 +71,13 @@ To get a long-lived access token:
 2. Scroll to "Long-Lived Access Tokens"
 3. Click "Create Token"
 
-### 3. Run the server
+### 4. Run the server
 
 ```bash
 python3 server.py
 ```
 
-### 4. Open the dashboard
+### 5. Open the dashboard
 
 Navigate to: `http://localhost:8765/index.html`
 
@@ -89,9 +99,10 @@ sudo ./install.sh
 skylight-dashboard/
 ├── index.html          # Main dashboard (calendar, todos, weather)
 ├── dashboard.html      # Device controls panel
-├── server.py           # Proxy server for Home Assistant API
+├── server.py           # Proxy server with MQTT bridge
 ├── config.example.py   # Configuration template
 ├── config.py           # Your local config (not committed)
+├── requirements.txt    # Python dependencies
 ├── skylight-dashboard.sh    # Kiosk mode launcher
 ├── install.sh          # System service installer
 └── uninstall.sh        # System service uninstaller
@@ -139,6 +150,104 @@ sudo mount -t cifs //your-nas/photos /mnt/synology -o username=user,password=pas
 - Optional TTS announcement ("It's X o'clock")
 - Configurable hours (default: 6 AM to 10 PM)
 - Enable/disable in screensaver settings
+
+### MQTT Integration
+
+Enable MQTT for remote control from Home Assistant automations.
+
+#### Configuration
+
+Add to your `config.py`:
+
+```python
+MQTT_ENABLED = True
+MQTT_BROKER = "YOUR_HA_IP"      # Usually same as HA_URL host
+MQTT_PORT = 1883
+MQTT_USERNAME = "mqtt_user"     # Leave empty if no auth
+MQTT_PASSWORD = "mqtt_pass"
+MQTT_DEVICE_ID = "skylight_living"   # Unique identifier
+MQTT_DEVICE_NAME = "Living Room Dashboard"
+WS_PORT = 8766
+```
+
+#### Auto-Discovery
+
+When connected, these entities appear automatically in Home Assistant:
+
+| Entity | Type | Description |
+|--------|------|-------------|
+| `switch.skylight_living_screen` | Switch | Wake/sleep control |
+| `sensor.skylight_living_state` | Sensor | Online/offline status |
+| `sensor.skylight_living_tab` | Sensor | Current tab |
+| `number.skylight_living_volume` | Number | Volume (0-100%) |
+| `binary_sensor.skylight_living_camera` | Binary Sensor | Camera overlay active |
+
+#### MQTT Commands
+
+Publish to topic: `skylight/{device_id}/command`
+
+| Command | Payload | Description |
+|---------|---------|-------------|
+| Wake screen | `{"command": "wake"}` | Exit screensaver |
+| Start screensaver | `{"command": "screensaver", "enabled": true}` | Activate screensaver |
+| TTS message | `{"command": "speak", "message": "Hello!", "alarm": true}` | Speak with optional alert sound |
+| Show camera | `{"command": "show_camera", "entity_id": "camera.doorbell", "title": "Front Door", "duration": 30}` | Display camera feed |
+| Hide camera | `{"command": "hide_camera"}` | Close camera overlay |
+| Switch tab | `{"command": "navigate", "tab": "calendar"}` | Navigate to tab |
+| Set volume | `{"command": "volume", "value": 80}` | Set volume (0-100) |
+| Set brightness | `{"command": "brightness", "value": 200}` | Set screen brightness (0-255) |
+| Reload | `{"command": "reload"}` | Refresh the dashboard |
+
+#### Home Assistant Automation Examples
+
+**Wake on Motion:**
+```yaml
+automation:
+  - alias: "Wake Skylight on Motion"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.living_room_motion
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: switch.skylight_living_screen
+        state: "off"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "skylight/skylight_living/command"
+          payload: '{"command": "wake"}'
+```
+
+**Doorbell Camera Popup:**
+```yaml
+automation:
+  - alias: "Show Doorbell on Dashboard"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.doorbell_button
+        to: "on"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "skylight/skylight_living/command"
+          payload: '{"command": "show_camera", "entity_id": "camera.doorbell", "title": "Front Door", "duration": 30}'
+```
+
+**Voice Notification:**
+```yaml
+automation:
+  - alias: "Announce Front Door Open"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door
+        to: "on"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "skylight/skylight_living/command"
+          payload: '{"command": "speak", "message": "Front door is open!", "alarm": true}'
+```
 
 ## Home Assistant Entities
 
