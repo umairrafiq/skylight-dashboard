@@ -563,6 +563,18 @@
         </div>
     </div>
 
+    <!-- Prayer Time Notification (gentle, no alarm) -->
+    <div id="prayerNotification" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[90] hidden">
+        <div class="text-center animate-fade-in">
+            <div class="text-8xl mb-6">🕌</div>
+            <div id="prayer-notification-text" class="text-4xl font-light text-white mb-2">Get ready, time for Fajr</div>
+            <div id="prayer-notification-time" class="text-xl text-white/70"></div>
+            <button onclick="closePrayerNotification()" class="mt-8 px-8 py-3 bg-white/20 hover:bg-white/30 text-white font-medium rounded-full transition-colors">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
     <!-- Event Modal --><div id="eventModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-6 w-full max-w-md border border-slate-700 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -845,7 +857,9 @@
         let currentAlertEvent = null;
         let prayerTimes = {}; // Store prayer times for alerts
         let weatherForecast = {}; // Store weather forecast by date
+        let autoDismissTimer = null; // Timer for auto-dismissing alarms after 5 minutes
         const ALERT_MINUTES_BEFORE = 5; // Alert 5 minutes before event
+        const AUTO_DISMISS_MS = 5 * 60 * 1000; // Auto-dismiss alarms after 5 minutes
 
         // TTS and Alarm configuration
         const TTS_PLATFORM = 'tts.piper'; // Home Assistant TTS platform
@@ -2689,14 +2703,8 @@
 
                 // Alert if prayer is within ALERT_MINUTES_BEFORE minutes
                 if (minutesUntil > 0 && minutesUntil <= ALERT_MINUTES_BEFORE) {
-                    const prayerEvent = {
-                        summary: prayerNames[prayer],
-                        startDate: time,
-                        endDate: new Date(time.getTime() + 30 * 60 * 1000), // 30 min duration
-                        isPrayer: true,
-                        prayerId: prayerId
-                    };
-                    showEventAlert(prayerEvent, minutesUntil, true);
+                    // Show gentle prayer notification (no alarm sound)
+                    showPrayerNotification(prayer, prayerNames[prayer], time);
                     alertedEvents.add(prayerId);
                     delete snoozedEvents[prayerId];
                     return;
@@ -2704,14 +2712,8 @@
 
                 // Also alert if snoozed prayer's snooze time has passed
                 if (snoozedEvents[prayerId] && now >= snoozedEvents[prayerId]) {
-                    const prayerEvent = {
-                        summary: prayerNames[prayer],
-                        startDate: time,
-                        endDate: new Date(time.getTime() + 30 * 60 * 1000),
-                        isPrayer: true,
-                        prayerId: prayerId
-                    };
-                    showEventAlert(prayerEvent, minutesUntil, true);
+                    // Show gentle prayer notification (no alarm sound)
+                    showPrayerNotification(prayer, prayerNames[prayer], time);
                     delete snoozedEvents[prayerId];
                     return;
                 }
@@ -2769,6 +2771,15 @@
             // Start looping alarm sound
             startAlarmLoop();
 
+            // Auto-dismiss after 5 minutes
+            if (autoDismissTimer) {
+                clearTimeout(autoDismissTimer);
+            }
+            autoDismissTimer = setTimeout(() => {
+                console.log('Auto-dismissing alarm after 5 minutes');
+                dismissAlert();
+            }, AUTO_DISMISS_MS);
+
             // Announce the event using TTS
             let announcement;
             if (isPrayer || event.isPrayer) {
@@ -2795,6 +2806,12 @@
             // Stop the alarm and TTS
             stopAlarm();
 
+            // Clear auto-dismiss timer
+            if (autoDismissTimer) {
+                clearTimeout(autoDismissTimer);
+                autoDismissTimer = null;
+            }
+
             if (currentAlertEvent) {
                 const eventId = currentAlertEvent.prayerId || `${currentAlertEvent.summary}-${currentAlertEvent.startDate.getTime()}`;
                 const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
@@ -2813,6 +2830,12 @@
             // Stop the alarm and TTS
             stopAlarm();
 
+            // Clear auto-dismiss timer
+            if (autoDismissTimer) {
+                clearTimeout(autoDismissTimer);
+                autoDismissTimer = null;
+            }
+
             if (currentAlertEvent) {
                 const eventId = currentAlertEvent.prayerId || `${currentAlertEvent.summary}-${currentAlertEvent.startDate.getTime()}`;
                 alertedEvents.add(eventId); // Mark as dismissed
@@ -2826,6 +2849,50 @@
         function closeAlertModal() {
             document.getElementById('alertModal').classList.add('hidden');
             currentAlertEvent = null;
+        }
+
+        // ==================== PRAYER NOTIFICATION (NO ALARM) ====================
+        let prayerNotificationTimer = null;
+
+        function showPrayerNotification(prayerKey, prayerName, prayerTime) {
+            // Wake screensaver before showing notification
+            if (screensaverController?.isActive) {
+                screensaverController.wake('prayer');
+            }
+
+            const notification = document.getElementById('prayerNotification');
+            const textEl = document.getElementById('prayer-notification-text');
+            const timeEl = document.getElementById('prayer-notification-time');
+
+            // Format the prayer name (remove "Prayer" suffix if present)
+            const displayName = prayerName.replace(' Prayer', '');
+            textEl.textContent = `Get ready, time for ${displayName}`;
+
+            const timeStr = prayerTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            timeEl.textContent = timeStr;
+
+            notification.classList.remove('hidden');
+
+            // Speak the announcement (no alarm sound)
+            speakText(`Get ready, time for ${displayName}`);
+
+            // Auto-dismiss after 30 seconds
+            if (prayerNotificationTimer) {
+                clearTimeout(prayerNotificationTimer);
+            }
+            prayerNotificationTimer = setTimeout(() => {
+                closePrayerNotification();
+            }, 30000);
+
+            console.log(`Prayer notification: ${prayerName} at ${timeStr}`);
+        }
+
+        function closePrayerNotification() {
+            document.getElementById('prayerNotification').classList.add('hidden');
+            if (prayerNotificationTimer) {
+                clearTimeout(prayerNotificationTimer);
+                prayerNotificationTimer = null;
+            }
         }
 
         // ==================== SCREENSAVER SYSTEM ====================
