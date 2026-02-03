@@ -150,8 +150,28 @@
         }
 
         #screensaver-mini-calendar {
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-            min-width: 200px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7);
+            min-width: 320px;
+            top: 50% !important;
+            transform: translateY(-50%);
+        }
+
+        #screensaver-mini-calendar .cal-day {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+
+        #screensaver-mini-calendar .cal-header {
+            font-size: 0.9rem;
+        }
+
+        #screensaver-mini-calendar .cal-today {
+            background: white;
+            color: #1e293b;
+            font-weight: 700;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
         }
 
         .screensaver-loading {
@@ -200,20 +220,20 @@
         </div>
 
         <!-- Mini Calendar -->
-        <div id="screensaver-mini-calendar" class="absolute top-6 right-6 bg-black/40 backdrop-blur-md rounded-xl p-4 text-white z-10">
-            <div id="mini-cal-header" class="text-center mb-3">
-                <div id="mini-cal-month" class="text-xl font-light tracking-wide"></div>
-                <div id="mini-cal-year" class="text-sm opacity-70"></div>
+        <div id="screensaver-mini-calendar" class="absolute right-8 bg-black/50 backdrop-blur-lg rounded-2xl p-6 text-white z-10 border border-white/10">
+            <div id="mini-cal-header" class="text-center mb-4">
+                <div id="mini-cal-month" class="text-3xl font-light tracking-wide"></div>
+                <div id="mini-cal-year" class="text-lg opacity-80 mt-1"></div>
             </div>
-            <div id="mini-cal-grid" class="grid grid-cols-7 gap-1 text-center text-sm">
+            <div id="mini-cal-grid" class="grid grid-cols-7 gap-2 text-center">
                 <!-- Day headers -->
-                <div class="text-xs opacity-50 font-medium">S</div>
-                <div class="text-xs opacity-50 font-medium">M</div>
-                <div class="text-xs opacity-50 font-medium">T</div>
-                <div class="text-xs opacity-50 font-medium">W</div>
-                <div class="text-xs opacity-50 font-medium">T</div>
-                <div class="text-xs opacity-50 font-medium">F</div>
-                <div class="text-xs opacity-50 font-medium">S</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">S</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">M</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">T</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">W</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">T</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">F</div>
+                <div class="cal-header text-sm opacity-70 font-semibold pb-2">S</div>
                 <!-- Days will be populated by JS -->
             </div>
         </div>
@@ -3381,19 +3401,19 @@
             // Add empty cells for days before first of month
             for (let i = 0; i < firstDay; i++) {
                 const empty = document.createElement('div');
-                empty.className = 'w-6 h-6';
+                empty.className = 'cal-day w-10 h-10';
                 grid.appendChild(empty);
             }
 
             // Add days
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayEl = document.createElement('div');
-                dayEl.className = 'w-6 h-6 flex items-center justify-center text-sm';
+                dayEl.className = 'cal-day w-10 h-10 flex items-center justify-center text-lg font-medium';
 
                 if (day === today) {
-                    dayEl.className += ' bg-white text-black rounded-full font-bold';
+                    dayEl.className += ' cal-today';
                 } else {
-                    dayEl.className += ' opacity-80';
+                    dayEl.className += ' opacity-90 hover:opacity-100';
                 }
 
                 dayEl.textContent = day;
