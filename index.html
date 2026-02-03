@@ -3686,6 +3686,22 @@
             }
         }
 
+        function resetOverlayThemes() {
+            // Reset all overlay elements to their default state when screensaver ends
+            const calendar = document.getElementById('screensaver-mini-calendar');
+            const metadata = document.getElementById('screensaver-metadata');
+            const header = document.getElementById('main-header');
+            const mailNotif = document.getElementById('mail-notification');
+
+            // Remove all overlay classes
+            [calendar, metadata, header, mailNotif].forEach(el => {
+                el?.classList.remove('overlay-light', 'overlay-dark');
+            });
+
+            // Reset mail notification to default light theme (for normal dashboard)
+            mailNotif?.classList.add('overlay-light');
+        }
+
         // Mini Calendar for Screensaver
         function updateMiniCalendar() {
             const now = new Date();
@@ -3931,6 +3947,9 @@
 
                 // Remove screensaver-active class from body
                 document.body.classList.remove('screensaver-active');
+
+                // Reset overlay themes to default (remove contrast classes)
+                resetOverlayThemes();
 
                 // Reset backgrounds
                 this.bg1.style.backgroundImage = '';
