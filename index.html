@@ -124,13 +124,43 @@
             left: 5rem;
             right: 0;
             z-index: 50 !important;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%) !important;
             padding: 1rem 1.5rem !important;
             pointer-events: none;
+            transition: all 0.5s ease;
         }
 
         .screensaver-active .main-header * {
             pointer-events: auto;
+        }
+
+        /* Header overlay for dark backgrounds (light text) */
+        .screensaver-active .main-header.overlay-light {
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%) !important;
+        }
+
+        .screensaver-active .main-header.overlay-light,
+        .screensaver-active .main-header.overlay-light * {
+            color: white !important;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        .screensaver-active .main-header.overlay-light .theme-text-muted {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+
+        /* Header overlay for light backgrounds (dark text) */
+        .screensaver-active .main-header.overlay-dark {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.6) 60%, transparent 100%) !important;
+        }
+
+        .screensaver-active .main-header.overlay-dark,
+        .screensaver-active .main-header.overlay-dark * {
+            color: #1e293b !important;
+            text-shadow: 0 2px 8px rgba(255, 255, 255, 0.7) !important;
+        }
+
+        .screensaver-active .main-header.overlay-dark .theme-text-muted {
+            color: rgba(30, 41, 59, 0.7) !important;
         }
 
         .screensaver-metadata {
@@ -3477,6 +3507,7 @@
         function setOverlayTheme(isLightBackground) {
             const calendar = document.getElementById('screensaver-mini-calendar');
             const metadata = document.getElementById('screensaver-metadata');
+            const header = document.getElementById('main-header');
             
             if (isLightBackground) {
                 // Light background = use dark overlay text
@@ -3484,12 +3515,16 @@
                 calendar?.classList.add('overlay-dark');
                 metadata?.classList.remove('overlay-light');
                 metadata?.classList.add('overlay-dark');
+                header?.classList.remove('overlay-light');
+                header?.classList.add('overlay-dark');
             } else {
                 // Dark background = use light overlay text
                 calendar?.classList.remove('overlay-dark');
                 calendar?.classList.add('overlay-light');
                 metadata?.classList.remove('overlay-dark');
                 metadata?.classList.add('overlay-light');
+                header?.classList.remove('overlay-dark');
+                header?.classList.add('overlay-light');
             }
         }
 
