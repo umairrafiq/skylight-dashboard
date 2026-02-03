@@ -150,10 +150,10 @@
         }
 
         #screensaver-mini-calendar {
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7);
             min-width: 320px;
             top: 50% !important;
             transform: translateY(-50%);
+            transition: all 0.5s ease;
         }
 
         #screensaver-mini-calendar .cal-day {
@@ -166,12 +166,63 @@
             font-size: 0.9rem;
         }
 
-        #screensaver-mini-calendar .cal-today {
-            background: white;
-            color: #1e293b;
+        /* Light overlay theme (for dark backgrounds) */
+        .overlay-light {
+            color: white !important;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7) !important;
+            background: rgba(0, 0, 0, 0.45) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        .overlay-light .cal-today {
+            background: white !important;
+            color: #1e293b !important;
             font-weight: 700;
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+        }
+
+        .overlay-light .cal-day:not(.cal-today) {
+            color: white !important;
+        }
+
+        /* Dark overlay theme (for light backgrounds) */
+        .overlay-dark {
+            color: #1e293b !important;
+            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.9), 0 0 20px rgba(255, 255, 255, 0.7) !important;
+            background: rgba(255, 255, 255, 0.75) !important;
+            border-color: rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .overlay-dark .cal-today {
+            background: #1e293b !important;
+            color: white !important;
+            font-weight: 700;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .overlay-dark .cal-day:not(.cal-today) {
+            color: #1e293b !important;
+        }
+
+        .overlay-dark .cal-header,
+        .overlay-dark #mini-cal-year {
+            opacity: 0.7 !important;
+        }
+
+        /* Metadata overlay themes */
+        .screensaver-metadata.overlay-light {
+            color: white !important;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9) !important;
+        }
+
+        .screensaver-metadata.overlay-dark {
+            color: #1e293b !important;
+            text-shadow: 0 2px 8px rgba(255, 255, 255, 0.9) !important;
+            background: rgba(255, 255, 255, 0.7) !important;
+            padding: 8px 12px !important;
+            border-radius: 8px !important;
         }
 
         .screensaver-loading {
@@ -220,7 +271,7 @@
         </div>
 
         <!-- Mini Calendar -->
-        <div id="screensaver-mini-calendar" class="absolute right-8 bg-black/50 backdrop-blur-lg rounded-2xl p-6 text-white z-10 border border-white/10">
+        <div id="screensaver-mini-calendar" class="absolute right-8 backdrop-blur-lg rounded-2xl p-6 z-10 border overlay-light">
             <div id="mini-cal-header" class="text-center mb-4">
                 <div id="mini-cal-month" class="text-3xl font-light tracking-wide"></div>
                 <div id="mini-cal-year" class="text-lg opacity-80 mt-1"></div>
@@ -3372,6 +3423,76 @@
             }
         }
 
+        // Image Brightness Detection for Overlay Contrast
+        function analyzeImageBrightness(imageUrl, callback) {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Sample a smaller version for performance
+                const sampleSize = 100;
+                canvas.width = sampleSize;
+                canvas.height = sampleSize;
+                
+                ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+                
+                try {
+                    const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize);
+                    const data = imageData.data;
+                    
+                    let totalBrightness = 0;
+                    let pixelCount = 0;
+                    
+                    // Sample pixels (every 4th pixel for speed)
+                    for (let i = 0; i < data.length; i += 16) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // Calculate perceived brightness (human eye is more sensitive to green)
+                        const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                        totalBrightness += brightness;
+                        pixelCount++;
+                    }
+                    
+                    const avgBrightness = totalBrightness / pixelCount;
+                    // Returns true if image is "light" (brightness > 127)
+                    callback(avgBrightness > 127);
+                } catch (e) {
+                    console.log('Could not analyze image brightness:', e);
+                    callback(false); // Default to dark background assumption
+                }
+            };
+            
+            img.onerror = function() {
+                callback(false); // Default to dark background assumption
+            };
+            
+            img.src = imageUrl;
+        }
+
+        function setOverlayTheme(isLightBackground) {
+            const calendar = document.getElementById('screensaver-mini-calendar');
+            const metadata = document.getElementById('screensaver-metadata');
+            
+            if (isLightBackground) {
+                // Light background = use dark overlay text
+                calendar?.classList.remove('overlay-light');
+                calendar?.classList.add('overlay-dark');
+                metadata?.classList.remove('overlay-light');
+                metadata?.classList.add('overlay-dark');
+            } else {
+                // Dark background = use light overlay text
+                calendar?.classList.remove('overlay-dark');
+                calendar?.classList.add('overlay-light');
+                metadata?.classList.remove('overlay-dark');
+                metadata?.classList.add('overlay-light');
+            }
+        }
+
         // Mini Calendar for Screensaver
         function updateMiniCalendar() {
             const now = new Date();
@@ -3568,6 +3689,11 @@
 
                 // Update metadata
                 this.updateMetadata(photo);
+
+                // Analyze image brightness and adjust overlay contrast
+                analyzeImageBrightness(url, (isLight) => {
+                    setOverlayTheme(isLight);
+                });
             }
 
             updateMetadata(photo) {
