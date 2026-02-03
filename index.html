@@ -149,6 +149,11 @@
             z-index: 5;
         }
 
+        #screensaver-mini-calendar {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+        }
+
         .screensaver-loading {
             position: absolute;
             inset: 0;
@@ -192,6 +197,25 @@
         <div id="screensaver-metadata" class="screensaver-metadata hidden">
             <div id="screensaver-date" class="text-lg font-light opacity-80"></div>
             <div id="screensaver-location" class="text-sm opacity-60"></div>
+        </div>
+
+        <!-- Mini Calendar -->
+        <div id="screensaver-mini-calendar" class="absolute top-6 right-6 bg-black/40 backdrop-blur-md rounded-xl p-4 text-white z-10">
+            <div id="mini-cal-header" class="text-center mb-3">
+                <div id="mini-cal-month" class="text-xl font-light tracking-wide"></div>
+                <div id="mini-cal-year" class="text-sm opacity-70"></div>
+            </div>
+            <div id="mini-cal-grid" class="grid grid-cols-7 gap-1 text-center text-sm">
+                <!-- Day headers -->
+                <div class="text-xs opacity-50 font-medium">S</div>
+                <div class="text-xs opacity-50 font-medium">M</div>
+                <div class="text-xs opacity-50 font-medium">T</div>
+                <div class="text-xs opacity-50 font-medium">W</div>
+                <div class="text-xs opacity-50 font-medium">T</div>
+                <div class="text-xs opacity-50 font-medium">F</div>
+                <div class="text-xs opacity-50 font-medium">S</div>
+                <!-- Days will be populated by JS -->
+            </div>
         </div>
 
         <!-- Controls -->
@@ -3328,6 +3352,55 @@
             }
         }
 
+        // Mini Calendar for Screensaver
+        function updateMiniCalendar() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const today = now.getDate();
+
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+
+            // Update header
+            document.getElementById('mini-cal-month').textContent = months[month];
+            document.getElementById('mini-cal-year').textContent = year;
+
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Build calendar grid
+            const grid = document.getElementById('mini-cal-grid');
+
+            // Clear existing days (keep headers)
+            const headers = Array.from(grid.children).slice(0, 7);
+            grid.innerHTML = '';
+            headers.forEach(h => grid.appendChild(h));
+
+            // Add empty cells for days before first of month
+            for (let i = 0; i < firstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'w-6 h-6';
+                grid.appendChild(empty);
+            }
+
+            // Add days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'w-6 h-6 flex items-center justify-center text-sm';
+
+                if (day === today) {
+                    dayEl.className += ' bg-white text-black rounded-full font-bold';
+                } else {
+                    dayEl.className += ' opacity-80';
+                }
+
+                dayEl.textContent = day;
+                grid.appendChild(dayEl);
+            }
+        }
+
         // Screensaver Controller
         class ScreensaverController {
             constructor(options = {}) {
@@ -3366,6 +3439,9 @@
 
                 // Add screensaver-active class to body for header styling
                 document.body.classList.add('screensaver-active');
+
+                // Update mini calendar
+                updateMiniCalendar();
 
                 // Initialize provider if needed
                 if (!this.provider) {
