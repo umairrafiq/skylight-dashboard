@@ -3127,6 +3127,12 @@
         function closeAlertModal() {
             document.getElementById('alertModal').classList.add('hidden');
             currentAlertEvent = null;
+
+            // Reset idle detector so screensaver can restart after timeout
+            if (idleDetector && idleDetector.running) {
+                idleDetector.resetTimer();
+                console.log('Idle timer reset after alert dismiss');
+            }
         }
 
         // ==================== PRAYER NOTIFICATION (NO ALARM) ====================
@@ -3775,7 +3781,10 @@
             }
 
             async start() {
-                if (this.isActive) return;
+                if (this.isActive) {
+                    console.log('Screensaver already active, skipping start');
+                    return;
+                }
 
                 console.log('Starting screensaver...');
                 this.isActive = true;
@@ -3793,24 +3802,36 @@
                 // Update mini calendar
                 updateMiniCalendar();
 
-                // Initialize provider if needed
+                // Initialize provider if needed (or reinitialize if config changed)
                 if (!this.provider) {
+                    console.log('Initializing photo provider...');
                     await this.initializeProvider();
                 }
 
                 // Initialize photo queue
                 if (this.provider) {
+                    console.log('Provider ready, initializing photo queue...');
                     this.photoQueue = new PhotoQueue(this.provider);
-                    const hasPhotos = await this.photoQueue.initialize();
+                    
+                    try {
+                        const hasPhotos = await this.photoQueue.initialize();
+                        console.log('Photo queue initialized, hasPhotos:', hasPhotos);
 
-                    if (hasPhotos) {
-                        this.loadingEl.classList.add('hidden');
-                        this.showNextPhoto();
-                        this.startSlideshow();
-                    } else {
-                        console.log('No photos available for screensaver');
-                        this.loadingEl.querySelector('span').textContent = 'No photos available. Configure photo source in settings.';
+                        if (hasPhotos) {
+                            this.loadingEl.classList.add('hidden');
+                            this.showNextPhoto();
+                            this.startSlideshow();
+                        } else {
+                            console.log('No photos available for screensaver');
+                            this.loadingEl.querySelector('span').textContent = 'No photos available. Configure photo source in settings.';
+                        }
+                    } catch (e) {
+                        console.error('Error initializing photo queue:', e);
+                        this.loadingEl.querySelector('span').textContent = 'Error loading photos. Check settings.';
                     }
+                } else {
+                    console.log('No provider configured for screensaver');
+                    this.loadingEl.querySelector('span').textContent = 'No photo source configured. Check settings.';
                 }
             }
 
