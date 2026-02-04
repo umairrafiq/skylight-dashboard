@@ -711,6 +711,11 @@
                         </div>
                     </details>
                 </div>
+
+                <!-- Version -->
+                <div class="border-t border-slate-700 pt-4 mt-6 text-center">
+                    <span id="dashboard-version" class="text-slate-500 text-sm">Skylight Dashboard</span>
+                </div>
             </div>
         </div>
     </div>
@@ -1037,6 +1042,9 @@
         // State
         let currentDate = new Date();
         let currentView = localStorage.getItem('currentView') || 'month';
+        // Dashboard Version
+        const DASHBOARD_VERSION = '1.0.0';
+
         let activeTab = localStorage.getItem('activeTab') || 'calendar';
         let events = [];
         let isDarkMode = true;
@@ -1198,6 +1206,9 @@
         async function init() {
             updateClock();
             setInterval(updateClock, 1000);
+
+            // Set version number
+            document.getElementById('dashboard-version').textContent = `Skylight Dashboard v${DASHBOARD_VERSION}`;
 
             // Initial data load
             await loadAvailableCalendars();
