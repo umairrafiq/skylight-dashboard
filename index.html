@@ -2263,7 +2263,7 @@
                                     const dayEvents = getEventsForDateTime(date, hour);
                                     const isToday = date.toDateString() === today.toDateString();
                                     return `
-                                        <div class="${isToday ? (dark ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-indigo-100 border-indigo-300') : (dark ? 'bg-slate-700/20 border-slate-700/30' : 'bg-slate-50 border-slate-200')} border p-1 cursor-pointer ${dark ? 'hover:bg-slate-700/40' : 'hover:bg-slate-100'}" onclick="openEventModalForTime(${date.getTime()}, ${hour})">
+                                        <div class="${isToday ? (dark ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-indigo-100 border-indigo-300') : (dark ? 'bg-slate-700/20 border-slate-700/30' : 'bg-slate-50 border-slate-200')} border p-1 cursor-pointer ${dark ? 'hover:bg-slate-700/40' : 'hover:bg-slate-100'}" onmousedown="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})" ontouchstart="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})">
                                             ${dayEvents.map(e => `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
                                         </div>
                                     `;
@@ -2385,7 +2385,7 @@
                             return `
                                 <div class="flex gap-4 min-h-16 hour-row" data-hour="${hour}">
                                     <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
-                                    <div class="flex-1 ${dark ? 'bg-slate-700/20 border-slate-700/30 hover:bg-slate-700/40' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'} border p-2 cursor-pointer" onclick="openEventModalForTime(${currentDate.getTime()}, ${hour})">
+                                    <div class="flex-1 ${dark ? 'bg-slate-700/20 border-slate-700/30 hover:bg-slate-700/40' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'} border p-2 cursor-pointer" onmousedown="startLongPress(this, openEventModalForTime, ${currentDate.getTime()}, ${hour})" ontouchstart="startLongPress(this, openEventModalForTime, ${currentDate.getTime()}, ${hour})">
                                         ${dayEvents.map(e => `
                                             <div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="p-2 text-white text-sm mb-1 cursor-pointer hover:opacity-80 transition-opacity" style="background-color: ${e.color}">
                                                 <div class="font-medium">${e.summary}</div>
@@ -2532,6 +2532,44 @@
                 `<option value="${cal.entity_id}">${cal.name}</option>`
             ).join('');
         }
+
+        // Long-press handler for creating events (2 second hold)
+        let longPressTimer = null;
+        let longPressTarget = null;
+        const LONG_PRESS_DURATION = 2000; // 2 seconds
+
+        function startLongPress(element, callback, ...args) {
+            longPressTarget = element;
+            element.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            element.style.transform = 'scale(0.98)';
+            element.style.boxShadow = 'inset 0 0 20px rgba(99, 102, 241, 0.3)';
+            
+            longPressTimer = setTimeout(() => {
+                element.style.transform = '';
+                element.style.boxShadow = '';
+                callback(...args);
+                longPressTimer = null;
+                longPressTarget = null;
+            }, LONG_PRESS_DURATION);
+        }
+
+        function cancelLongPress() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            if (longPressTarget) {
+                longPressTarget.style.transform = '';
+                longPressTarget.style.boxShadow = '';
+                longPressTarget = null;
+            }
+        }
+
+        // Add global listeners to cancel long-press on mouse/touch release or move
+        document.addEventListener('mouseup', cancelLongPress);
+        document.addEventListener('mouseleave', cancelLongPress);
+        document.addEventListener('touchend', cancelLongPress);
+        document.addEventListener('touchcancel', cancelLongPress);
 
         function openEventModal() {
             populateCalendarDropdown();
