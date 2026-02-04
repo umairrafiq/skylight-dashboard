@@ -1043,7 +1043,29 @@
         let currentDate = new Date();
         let currentView = localStorage.getItem('currentView') || 'month';
         // Dashboard Version
-        const DASHBOARD_VERSION = '1.0.0';
+        const DASHBOARD_VERSION = '1.1.0';
+
+        // Temperature conversion helpers
+        function fahrenheitToCelsius(f) {
+            return Math.round((f - 32) * 5 / 9);
+        }
+
+        function celsiusToFahrenheit(c) {
+            return Math.round(c * 9 / 5 + 32);
+        }
+
+        function formatTempBoth(tempF) {
+            const tempC = fahrenheitToCelsius(tempF);
+            return `${tempF}°F / ${tempC}°C`;
+        }
+
+        function formatTempBothShort(tempF) {
+            const tempC = fahrenheitToCelsius(tempF);
+            return `${tempF}°/${tempC}°`;
+        }
+
+        // Hourly weather forecast storage
+        let hourlyForecast = {};
 
         let activeTab = localStorage.getItem('activeTab') || 'calendar';
         let events = [];
@@ -1585,7 +1607,9 @@
                     const windSpeed = Math.round(weather.attributes.wind_speed);
                     const windUnit = weather.attributes.wind_speed_unit || 'mph';
 
-                    document.getElementById('weather-temp').textContent = `${temp}${unit}`;
+                    // Show both F and C
+                    const tempC = fahrenheitToCelsius(temp);
+                    document.getElementById('weather-temp').textContent = `${temp}°F / ${tempC}°C`;
 
                     // Format condition name
                     const conditionText = condition.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -1613,20 +1637,26 @@
                             forecasts.forEach(f => {
                                 const date = new Date(f.datetime);
                                 const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                                const highF = Math.round(f.temperature);
+                                const lowF = Math.round(f.templow);
                                 weatherForecast[dateKey] = {
                                     condition: f.condition,
-                                    high: Math.round(f.temperature),
-                                    low: Math.round(f.templow),
+                                    high: highF,
+                                    low: lowF,
+                                    highC: fahrenheitToCelsius(highF),
+                                    lowC: fahrenheitToCelsius(lowF),
                                     icon: getWeatherIcon(f.condition)
                                 };
                             });
 
-                            // Update today's high/low
+                            // Update today's high/low with both units
                             const todayForecast = forecasts[0];
                             if (todayForecast) {
                                 const high = Math.round(todayForecast.temperature);
                                 const low = Math.round(todayForecast.templow);
-                                document.getElementById('weather-hilo').textContent = `H: ${high}° L: ${low}°`;
+                                const highC = fahrenheitToCelsius(high);
+                                const lowC = fahrenheitToCelsius(low);
+                                document.getElementById('weather-hilo').textContent = `H: ${high}°F/${highC}°C  L: ${low}°F/${lowC}°C`;
                             }
 
                             // Re-render calendar to show weather
@@ -1635,7 +1665,45 @@
                             }
                         }
                     } catch (e) {
-                        console.error('Forecast load error:', e);
+                        console.error('Daily forecast load error:', e);
+                    }
+
+                    // Get hourly forecast for week/day views
+                    try {
+                        const hourlyResponse = await fetch('/api/services/weather/get_forecasts?return_response', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                entity_id: 'weather.forecast_home',
+                                type: 'hourly'
+                            })
+                        });
+                        const hourlyData = await hourlyResponse.json();
+                        if (hourlyData.service_response && hourlyData.service_response['weather.forecast_home']) {
+                            const hourlyForecasts = hourlyData.service_response['weather.forecast_home'].forecast || [];
+                            
+                            // Store hourly forecast by date-hour key
+                            hourlyForecast = {};
+                            hourlyForecasts.forEach(f => {
+                                const date = new Date(f.datetime);
+                                const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                                const hour = date.getHours();
+                                const tempF = Math.round(f.temperature);
+                                
+                                if (!hourlyForecast[dateKey]) {
+                                    hourlyForecast[dateKey] = {};
+                                }
+                                hourlyForecast[dateKey][hour] = {
+                                    temp: tempF,
+                                    tempC: fahrenheitToCelsius(tempF),
+                                    condition: f.condition,
+                                    icon: getWeatherIcon(f.condition)
+                                };
+                            });
+                            console.log('Hourly forecast loaded:', Object.keys(hourlyForecast).length, 'days');
+                        }
+                    } catch (e) {
+                        console.error('Hourly forecast load error:', e);
                     }
 
                     // Update humidity/wind display
@@ -2258,10 +2326,16 @@
                         <div class="w-16"></div>
                         ${weekDays.map(date => {
                             const isToday = date.toDateString() === today.toDateString();
+                            const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                            const dayWeather = weatherForecast[dateKey];
                             return `
                                 <div class="text-center cursor-pointer" onclick="goToDay(${date.getTime()})">
-                                    <div class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm font-medium">${date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                                        ${dayWeather ? `<span class="text-sm">${dayWeather.icon}</span>` : ''}
+                                    </div>
                                     <div class="text-lg font-semibold mt-1 w-10 h-10 mx-auto flex items-center justify-center ${isToday ? 'bg-indigo-600 text-white' : (dark ? 'text-white hover:bg-slate-700/30' : 'text-slate-800 hover:bg-slate-200')}">${date.getDate()}</div>
+                                    ${dayWeather ? `<div class="text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}">${dayWeather.high}°/${dayWeather.highC}°</div>` : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -2273,8 +2347,11 @@
                                 ${weekDays.map(date => {
                                     const dayEvents = getEventsForDateTime(date, hour);
                                     const isToday = date.toDateString() === today.toDateString();
+                                    const dateKey = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
+                                    const hourWeather = hourlyForecast[dateKey] ? hourlyForecast[dateKey][hour] : null;
                                     return `
-                                        <div class="${isToday ? (dark ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-indigo-100 border-indigo-300') : (dark ? 'bg-slate-700/20 border-slate-700/30' : 'bg-slate-50 border-slate-200')} border p-1 cursor-pointer ${dark ? 'hover:bg-slate-700/40' : 'hover:bg-slate-100'}" onmousedown="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})" ontouchstart="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})">
+                                        <div class="${isToday ? (dark ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-indigo-100 border-indigo-300') : (dark ? 'bg-slate-700/20 border-slate-700/30' : 'bg-slate-50 border-slate-200')} border p-1 cursor-pointer ${dark ? 'hover:bg-slate-700/40' : 'hover:bg-slate-100'} relative" onmousedown="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})" ontouchstart="startLongPress(this, openEventModalForTime, ${date.getTime()}, ${hour})">
+                                            ${hourWeather ? `<div class="absolute top-0 right-0 text-[9px] ${dark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-0.5 pr-0.5">${hourWeather.icon}${hourWeather.temp}°</div>` : ''}
                                             ${dayEvents.map(e => `<div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
                                         </div>
                                     `;
@@ -2384,18 +2461,29 @@
             const isToday = currentDate.toDateString() === today.toDateString();
             const dark = isDarkMode;
 
+            const dateKey = currentDate.getFullYear() + '-' + currentDate.getMonth() + '-' + currentDate.getDate();
+            const dayWeather = weatherForecast[dateKey];
+
             container.innerHTML = `
                 <div class="h-full flex flex-col">
                     <div class="text-center pb-4 ${dark ? 'border-slate-700/50 bg-slate-800/95' : 'border-slate-200 bg-white/95'} border-b sticky top-0 z-10 backdrop-blur-sm">
-                        <div class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="${isToday ? 'text-indigo-400' : (dark ? 'text-slate-400' : 'text-slate-500')} text-sm">${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                            ${dayWeather ? `<span class="text-xl">${dayWeather.icon}</span>` : ''}
+                        </div>
                         <div class="text-4xl font-light ${isToday ? 'text-indigo-400' : (dark ? 'text-white' : 'text-slate-800')} mt-1">${currentDate.getDate()}</div>
+                        ${dayWeather ? `<div class="text-sm ${dark ? 'text-slate-400' : 'text-slate-500'} mt-1">High: ${dayWeather.high}°F/${dayWeather.highC}°C · Low: ${dayWeather.low}°F/${dayWeather.lowC}°C</div>` : ''}
                     </div>
                     <div id="day-time-grid" class="space-y-1 overflow-auto relative flex-1 mt-4">
                         ${hours.map(hour => {
                             const dayEvents = getEventsForDateTime(currentDate, hour, true);
+                            const hourWeather = hourlyForecast[dateKey] ? hourlyForecast[dateKey][hour] : null;
                             return `
                                 <div class="flex gap-4 min-h-16 hour-row" data-hour="${hour}">
-                                    <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-20 text-right pt-1 flex-shrink-0">${formatHour(hour)}</div>
+                                    <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-20 text-right pt-1 flex-shrink-0">
+                                        ${formatHour(hour)}
+                                        ${hourWeather ? `<div class="flex items-center justify-end gap-0.5 mt-0.5"><span class="text-[10px]">${hourWeather.icon}</span><span class="text-[10px]">${hourWeather.temp}°/${hourWeather.tempC}°</span></div>` : ''}
+                                    </div>
                                     <div class="flex-1 ${dark ? 'bg-slate-700/20 border-slate-700/30 hover:bg-slate-700/40' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'} border p-2 cursor-pointer" onmousedown="startLongPress(this, openEventModalForTime, ${currentDate.getTime()}, ${hour})" ontouchstart="startLongPress(this, openEventModalForTime, ${currentDate.getTime()}, ${hour})">
                                         ${dayEvents.map(e => `
                                             <div onclick="event.stopPropagation(); showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="p-2 text-white text-sm mb-1 cursor-pointer hover:opacity-80 transition-opacity" style="background-color: ${e.color}">
