@@ -3,7 +3,7 @@
 # Opens the dashboard in fullscreen browser
 # Server runs as systemd user service (skylight-server.service)
 
-URL="http://localhost:8765/index.html"
+URL="http://localhost:8765/index.html?v=$(date +%s)"
 
 # Ensure server is running
 if ! systemctl --user is-active --quiet skylight-server; then
@@ -23,11 +23,11 @@ sleep 0.5
 
 # Launch browser in fullscreen app mode
 if command -v google-chrome &> /dev/null; then
-    nohup google-chrome --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run >/dev/null 2>&1 &
+    nohup google-chrome --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run --disk-cache-size=1 --aggressive-cache-discard >/dev/null 2>&1 &
 elif command -v chromium-browser &> /dev/null; then
-    nohup chromium-browser --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run >/dev/null 2>&1 &
+    nohup chromium-browser --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run --disk-cache-size=1 >/dev/null 2>&1 &
 elif command -v chromium &> /dev/null; then
-    nohup chromium --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run >/dev/null 2>&1 &
+    nohup chromium --new-window --app="$URL" --start-fullscreen --noerrdialogs --disable-infobars --no-first-run --disk-cache-size=1 >/dev/null 2>&1 &
 elif command -v firefox &> /dev/null; then
     nohup firefox --kiosk "$URL" >/dev/null 2>&1 &
 else

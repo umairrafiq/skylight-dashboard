@@ -21,6 +21,9 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - **MQTT Integration** - Two-way communication with Home Assistant
 - **Camera Popups** - Show doorbell/security cameras with sound alerts
 - **Wake on Motion** - Wake screen via Home Assistant automations
+- **Notifications Center** - Unified notification panel in sidebar
+- **Mail & Packages** - USPS, Amazon, FedEx, UPS tracking from Informed Delivery
+- **HA Notifications** - Shows and dismisses Home Assistant persistent notifications
 
 ## Screenshots
 
@@ -249,6 +252,41 @@ automation:
           payload: '{"command": "speak", "message": "Front door is open!", "alarm": true}'
 ```
 
+### Notifications Center
+
+The sidebar includes a unified notifications panel that aggregates:
+
+#### Mail & Packages
+- USPS Mail, Packages, In Transit
+- Amazon Packages
+- FedEx Packages, In Transit
+- UPS Packages, In Transit
+
+Requires the **Mail and Packages** integration (HACS) with Informed Delivery configured.
+
+#### Home Assistant Notifications
+All persistent notifications from Home Assistant appear here and can be dismissed directly from the dashboard.
+
+#### Usage
+1. Click the 📬 icon in the left sidebar
+2. View all notifications grouped by category
+3. Hover over mail items and click **✕** to hide from the header overlay (stays in list)
+4. Click **✕** on HA notifications to dismiss them completely
+5. Hidden mail notifications reset daily at midnight
+
+#### Supported Sensors
+```yaml
+# Mail and Packages integration (with or without _2 suffix)
+sensor.mail_usps_mail
+sensor.mail_usps_packages
+sensor.mail_usps_delivering
+sensor.mail_amazon_packages
+sensor.mail_fedex_packages
+sensor.mail_fedex_delivering
+sensor.mail_ups_packages
+sensor.mail_ups_delivering
+```
+
 ## Home Assistant Entities
 
 The dashboard automatically discovers:
@@ -258,6 +296,8 @@ The dashboard automatically discovers:
 - `weather.forecast_home` - Weather data
 - `sun.sun` - Sunrise/sunset times
 - `sensor.islamic_prayer_times_*` - Prayer times
+- `sensor.mail_*` - Mail and package notifications
+- `persistent_notification.*` - HA persistent notifications
 
 ## License
 

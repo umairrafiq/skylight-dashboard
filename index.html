@@ -78,6 +78,182 @@
 
         .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
 
+        /* Connection status indicator (small, non-intrusive) */
+        @keyframes connection-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
+        @keyframes connection-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .connection-indicator {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(239, 68, 68, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .connection-indicator.connecting {
+            background: rgba(245, 158, 11, 0.9);
+        }
+        .connection-indicator .icon {
+            width: 20px;
+            height: 20px;
+            animation: connection-blink 1s ease-in-out infinite;
+        }
+        .connection-indicator .text {
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .connection-indicator .dots {
+            display: flex;
+            gap: 2px;
+        }
+        .connection-indicator .dots span {
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: connection-pulse 1.4s ease-in-out infinite;
+        }
+        .connection-indicator .dots span:nth-child(2) { animation-delay: 0.2s; }
+        .connection-indicator .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Mail/Notifications Panel */
+        .notifications-panel {
+            position: fixed;
+            left: 5.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            width: 320px;
+            max-height: 70vh;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        .notifications-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notifications-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .notifications-close {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .notifications-close:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        .notifications-list {
+            max-height: calc(70vh - 60px);
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background: var(--bg-card);
+            margin-bottom: 0.5rem;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .notification-item:hover {
+            background: var(--bg-primary);
+        }
+        .notification-item:hover .notification-dismiss {
+            opacity: 1;
+        }
+        .notification-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .notification-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .notification-count {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .notification-dismiss {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.75rem;
+        }
+        .notification-dismiss:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+        .notifications-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .mail-badge {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            min-width: 18px;
+            height: 18px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
         /* Screensaver Ken Burns animations */
         @keyframes kenburns-zoom-in {
             0% { transform: scale(1) translate(0, 0); }
@@ -336,6 +512,19 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen">
+
+    <!-- Connection Status Indicator (small, top-left) -->
+    <div id="connection-indicator" class="connection-indicator connecting hidden">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0"/>
+        </svg>
+        <span class="text" id="connection-text">Connecting</span>
+        <div class="dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
 
     <!-- Screensaver Overlay -->
     <div id="screensaverOverlay" class="screensaver-overlay hidden">
@@ -888,6 +1077,11 @@
                 <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M21.8,13H20V21H4V13H2.2C1.76,13 1.44,12.5 1.68,12.13L11.5,1.54C11.72,1.28 12.28,1.28 12.5,1.54L22.32,12.13C22.56,12.5 22.24,13 21.8,13M7,10V12H9V10H7M11,10V12H13V10H11M15,10V12H17V10H15M7,14V16H9V14H7M11,14V16H13V14H11M15,14V16H17V14H15M7,18V20H9V18H7M11,18V20H13V18H11M15,18V20H17V18H15Z"/></svg>
             </button>
 
+            <button onclick="toggleNotificationsPanel()" id="btn-mail" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white relative" title="Mail & Packages">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span id="mail-badge" class="mail-badge hidden">0</span>
+            </button>
+
             <div class="flex-1"></div>
 
             <button onclick="refreshData()" id="refresh-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white">
@@ -901,6 +1095,19 @@
             <button onclick="openScreensaverSettings()" id="screensaver-btn" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white" title="Screensaver Settings">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             </button>
+        </div>
+
+        <!-- Notifications Panel -->
+        <div id="notifications-panel" class="notifications-panel hidden">
+            <div class="notifications-header">
+                <h3>🔔 Notifications</h3>
+                <button class="notifications-close" onclick="closeNotificationsPanel()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="notifications-list" class="notifications-list">
+                <div class="notifications-empty">📭 No notifications</div>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -1043,7 +1250,150 @@
         let currentDate = new Date();
         let currentView = localStorage.getItem('currentView') || 'month';
         // Dashboard Version
-        const DASHBOARD_VERSION = '1.1.0';
+        const DASHBOARD_VERSION = '1.2.2';
+
+        // Connection State (with grace period - show indicator only after 3 consecutive failures)
+        let isConnected = true; // Assume connected initially
+        let consecutiveFailures = 0;
+        const CONNECTION_GRACE_THRESHOLD = 3; // Show indicator after 3 failures
+        let connectionRetryCount = 0;
+        let connectionRetryInterval = null;
+        let connectionBeepContext = null;
+
+        // Connection indicator functions (small, non-intrusive)
+        function showConnectionIndicator(message = 'Connecting') {
+            const indicator = document.getElementById('connection-indicator');
+            const textEl = document.getElementById('connection-text');
+            if (indicator) {
+                indicator.classList.remove('hidden');
+                indicator.classList.toggle('connecting', consecutiveFailures < 5);
+            }
+            if (textEl) textEl.textContent = message;
+        }
+
+        function hideConnectionIndicator() {
+            const indicator = document.getElementById('connection-indicator');
+            if (indicator) indicator.classList.add('hidden');
+            stopConnectionRetry();
+            consecutiveFailures = 0;
+        }
+
+        function playConnectionBeep() {
+            try {
+                if (!connectionBeepContext) {
+                    connectionBeepContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const oscillator = connectionBeepContext.createOscillator();
+                const gainNode = connectionBeepContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(connectionBeepContext.destination);
+                oscillator.frequency.value = 440; // A4 note
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.08, connectionBeepContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, connectionBeepContext.currentTime + 0.1);
+                oscillator.start(connectionBeepContext.currentTime);
+                oscillator.stop(connectionBeepContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('Could not play connection beep:', e);
+            }
+        }
+
+        function startConnectionRetry() {
+            if (connectionRetryInterval) return; // Already running
+            connectionRetryInterval = setInterval(() => {
+                connectionRetryCount++;
+                // Only beep after showing the indicator
+                if (consecutiveFailures >= CONNECTION_GRACE_THRESHOLD) {
+                    playConnectionBeep();
+                }
+                testConnection();
+            }, 10000); // Every 10 seconds
+        }
+
+        function stopConnectionRetry() {
+            if (connectionRetryInterval) {
+                clearInterval(connectionRetryInterval);
+                connectionRetryInterval = null;
+            }
+            connectionRetryCount = 0;
+        }
+
+        function handleConnectionFailure() {
+            consecutiveFailures++;
+            console.log(`Connection attempt failed (${consecutiveFailures}/${CONNECTION_GRACE_THRESHOLD})`);
+            
+            // Only show indicator after grace threshold
+            if (consecutiveFailures >= CONNECTION_GRACE_THRESHOLD) {
+                if (isConnected) {
+                    isConnected = false;
+                    showConnectionIndicator('Reconnecting');
+                    startConnectionRetry();
+                }
+            }
+        }
+
+        function handleConnectionSuccess() {
+            const wasDisconnected = !isConnected || consecutiveFailures >= CONNECTION_GRACE_THRESHOLD;
+            consecutiveFailures = 0;
+            isConnected = true;
+            hideConnectionIndicator();
+            
+            if (wasDisconnected) {
+                console.log('✓ Connected to Home Assistant');
+            }
+        }
+
+        async function testConnection() {
+            try {
+                const response = await fetch('/api/states', { 
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+                if (response.ok) {
+                    const wasDisconnected = consecutiveFailures >= CONNECTION_GRACE_THRESHOLD;
+                    handleConnectionSuccess();
+                    if (wasDisconnected) {
+                        await refreshData();
+                    }
+                    return true;
+                }
+            } catch (e) {
+                // Connection failed
+            }
+            handleConnectionFailure();
+            return false;
+        }
+
+        // Safe date parsing - returns null if invalid
+        function safeParseDate(dateStr) {
+            if (!dateStr) return null;
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return null;
+            return date;
+        }
+
+        // Safe time formatting - returns placeholder if invalid
+        function safeFormatTime(dateStr, fallback = '--:--') {
+            const date = safeParseDate(dateStr);
+            if (!date) return fallback;
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        // Kiosk Mode Detection
+        const urlParams = new URLSearchParams(window.location.search);
+        const KIOSK_MODE = urlParams.get('kiosk') === '1' || urlParams.get('kiosk') === 'true';
+        
+        if (KIOSK_MODE) {
+            // Disable all context menus in kiosk mode
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            // Disable text selection
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
+            // Disable drag
+            document.addEventListener('dragstart', (e) => e.preventDefault());
+            console.log('🖥️ Kiosk mode enabled');
+        }
 
         // Temperature conversion helpers
         function fahrenheitToCelsius(f) {
@@ -1105,21 +1455,47 @@
             '#84cc16', // Lime
         ];
 
+        // Specific colors for holiday calendars
+        const CALENDAR_COLOR_MAP = {
+            'calendar.us_holidays': '#3b82f6',        // Blue - US
+            'calendar.islamic_holidays': '#10b981',   // Green - Islamic
+            'calendar.christian_holidays': '#8b5cf6', // Purple - Christian
+            'calendar.jewish_holidays': '#f59e0b',    // Amber - Jewish
+            'calendar.family': '#ec4899',             // Pink - Family
+            'calendar.personal': '#6366f1',           // Indigo - Personal
+            'calendar.work': '#06b6d4',               // Cyan - Work
+            'calendar.kids': '#f97316',               // Orange - Kids
+            'calendar.medical': '#ef4444',            // Red - Medical
+        };
+
         let CALENDAR_COLORS = {};
 
         // Todo lists - dynamically fetched from HA
         let todoLists = [];
         let allTodos = {};
 
-        // API Helper
+        // API Helper with connection tracking (graceful - 3 failures before showing indicator)
         async function fetchHA(endpoint, method = 'GET', body = null) {
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(15000) // 15 second timeout
             };
             if (body) options.body = JSON.stringify(body);
-            const response = await fetch(endpoint, options);
-            return response.json();
+            
+            try {
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                // Connection successful - reset failure counter
+                handleConnectionSuccess();
+                return response.json();
+            } catch (e) {
+                console.error(`API error (${endpoint}):`, e.message);
+                handleConnectionFailure();
+                throw e; // Re-throw so callers can handle
+            }
         }
 
         // Load available calendars from Home Assistant
@@ -1134,7 +1510,7 @@
                     return {
                         entity_id: entityId,
                         name: friendlyName,
-                        color: DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+                        color: CALENDAR_COLOR_MAP[entityId] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]
                     };
                 });
 
@@ -1232,13 +1608,25 @@
             // Set version number
             document.getElementById('dashboard-version').textContent = `Skylight Dashboard v${DASHBOARD_VERSION}`;
 
-            // Initial data load
-            await loadAvailableCalendars();
-            await loadAvailableTodoLists();
-            await loadWeather();
-            await loadMailNotifications();
-            await loadCalendarEvents();
-            await loadTodos();
+            // Initial data load - silently, indicator shows only after 3 failures
+            try {
+                resetDismissedIfNewDay(); // Clear dismissed notifications daily
+                await loadAvailableCalendars();
+                await loadAvailableTodoLists();
+                await loadWeather();
+                await loadMailNotifications();
+                await loadCalendarEvents();
+                await loadTodos();
+                // If we got here, we're connected
+                handleConnectionSuccess();
+            } catch (e) {
+                console.error('Initial load failed:', e);
+                // handleConnectionFailure already called by fetchHA
+                // Start retry interval if not already running
+                if (consecutiveFailures >= CONNECTION_GRACE_THRESHOLD) {
+                    startConnectionRetry();
+                }
+            }
 
             // Restore saved UI settings
             setView(currentView);
@@ -1294,6 +1682,17 @@
 
             // Update time indicator every minute
             setInterval(updateTimeIndicators, 60000);
+
+            // Connection health check every 60 seconds
+            setInterval(async () => {
+                if (isConnected) {
+                    try {
+                        await testConnection();
+                    } catch (e) {
+                        // testConnection handles the error
+                    }
+                }
+            }, 60000);
 
             console.log('Event alert system initialized - checking every 30 seconds');
         }
@@ -1599,17 +1998,21 @@
                 const states = await fetchHA('/api/states');
                 const weather = states.find(s => s.entity_id === 'weather.forecast_home');
 
-                if (weather) {
-                    const temp = Math.round(weather.attributes.temperature);
-                    const condition = weather.state;
-                    const unit = weather.attributes.temperature_unit || '°F';
-                    const humidity = weather.attributes.humidity;
-                    const windSpeed = Math.round(weather.attributes.wind_speed);
-                    const windUnit = weather.attributes.wind_speed_unit || 'mph';
+                if (weather && weather.attributes) {
+                    const attrs = weather.attributes;
+                    const temp = typeof attrs.temperature === 'number' ? Math.round(attrs.temperature) : null;
+                    const condition = weather.state || 'unknown';
+                    const humidity = typeof attrs.humidity === 'number' ? attrs.humidity : null;
+                    const windSpeed = typeof attrs.wind_speed === 'number' ? Math.round(attrs.wind_speed) : null;
+                    const windUnit = attrs.wind_speed_unit || 'mph';
 
-                    // Show both F and C
-                    const tempC = fahrenheitToCelsius(temp);
-                    document.getElementById('weather-temp').textContent = `${temp}°F / ${tempC}°C`;
+                    // Show both F and C (or placeholder if no data)
+                    if (temp !== null) {
+                        const tempC = fahrenheitToCelsius(temp);
+                        document.getElementById('weather-temp').textContent = `${temp}°F / ${tempC}°C`;
+                    } else {
+                        document.getElementById('weather-temp').textContent = '--°F / --°C';
+                    }
 
                     // Format condition name
                     const conditionText = condition.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -1635,16 +2038,17 @@
                             // Store forecast by date for calendar display
                             weatherForecast = {};
                             forecasts.forEach(f => {
-                                const date = new Date(f.datetime);
+                                const date = safeParseDate(f.datetime);
+                                if (!date) return; // Skip invalid dates
                                 const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-                                const highF = Math.round(f.temperature);
-                                const lowF = Math.round(f.templow);
+                                const highF = typeof f.temperature === 'number' ? Math.round(f.temperature) : null;
+                                const lowF = typeof f.templow === 'number' ? Math.round(f.templow) : null;
                                 weatherForecast[dateKey] = {
                                     condition: f.condition,
                                     high: highF,
                                     low: lowF,
-                                    highC: fahrenheitToCelsius(highF),
-                                    lowC: fahrenheitToCelsius(lowF),
+                                    highC: highF !== null ? fahrenheitToCelsius(highF) : null,
+                                    lowC: lowF !== null ? fahrenheitToCelsius(lowF) : null,
                                     icon: getWeatherIcon(f.condition)
                                 };
                             });
@@ -1652,11 +2056,15 @@
                             // Update today's high/low with both units
                             const todayForecast = forecasts[0];
                             if (todayForecast) {
-                                const high = Math.round(todayForecast.temperature);
-                                const low = Math.round(todayForecast.templow);
-                                const highC = fahrenheitToCelsius(high);
-                                const lowC = fahrenheitToCelsius(low);
-                                document.getElementById('weather-hilo').textContent = `H: ${high}°F/${highC}°C  L: ${low}°F/${lowC}°C`;
+                                const high = typeof todayForecast.temperature === 'number' ? Math.round(todayForecast.temperature) : null;
+                                const low = typeof todayForecast.templow === 'number' ? Math.round(todayForecast.templow) : null;
+                                if (high !== null && low !== null) {
+                                    const highC = fahrenheitToCelsius(high);
+                                    const lowC = fahrenheitToCelsius(low);
+                                    document.getElementById('weather-hilo').textContent = `H: ${high}°F/${highC}°C  L: ${low}°F/${lowC}°C`;
+                                } else {
+                                    document.getElementById('weather-hilo').textContent = 'H: --°F/--°C  L: --°F/--°C';
+                                }
                             }
 
                             // Re-render calendar to show weather
@@ -1685,18 +2093,19 @@
                             // Store hourly forecast by date-hour key
                             hourlyForecast = {};
                             hourlyForecasts.forEach(f => {
-                                const date = new Date(f.datetime);
+                                const date = safeParseDate(f.datetime);
+                                if (!date) return; // Skip invalid dates
                                 const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
                                 const hour = date.getHours();
-                                const tempF = Math.round(f.temperature);
+                                const tempF = typeof f.temperature === 'number' ? Math.round(f.temperature) : null;
                                 
                                 if (!hourlyForecast[dateKey]) {
                                     hourlyForecast[dateKey] = {};
                                 }
                                 hourlyForecast[dateKey][hour] = {
                                     temp: tempF,
-                                    tempC: fahrenheitToCelsius(tempF),
-                                    condition: f.condition,
+                                    tempC: tempF !== null ? fahrenheitToCelsius(tempF) : null,
+                                    condition: f.condition || 'unknown',
                                     icon: getWeatherIcon(f.condition)
                                 };
                             });
@@ -1709,17 +2118,23 @@
                     // Update humidity/wind display
                     const extraInfo = document.getElementById('weather-extra');
                     if (extraInfo) {
-                        extraInfo.textContent = `💧 ${humidity}% | 💨 ${windSpeed} ${windUnit}`;
+                        const humidityStr = humidity !== null ? `${humidity}%` : '--%';
+                        const windStr = windSpeed !== null ? `${windSpeed} ${windUnit}` : '-- mph';
+                        extraInfo.textContent = `💧 ${humidityStr} | 💨 ${windStr}`;
                     }
                 }
 
                 // Sun data
                 const sun = states.find(s => s.entity_id === 'sun.sun');
-                if (sun) {
-                    const sunrise = new Date(sun.attributes.next_rising);
-                    const sunset = new Date(sun.attributes.next_setting);
-                    document.getElementById('sunrise-time').textContent = sunrise.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                    document.getElementById('sunset-time').textContent = sunset.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                if (sun && sun.attributes) {
+                    const sunrise = safeParseDate(sun.attributes.next_rising);
+                    const sunset = safeParseDate(sun.attributes.next_setting);
+                    document.getElementById('sunrise-time').textContent = sunrise 
+                        ? sunrise.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                        : '--:--';
+                    document.getElementById('sunset-time').textContent = sunset
+                        ? sunset.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                        : '--:--';
 
                     // Auto theme based on sun position
                     const isBelowHorizon = sun.state === 'below_horizon';
@@ -1742,12 +2157,16 @@
 
                 for (const [prayer, entity] of Object.entries(prayerEntities)) {
                     if (entity && entity.state) {
-                        const time = new Date(entity.state);
-                        prayerTimes[prayer] = time;
+                        const time = safeParseDate(entity.state);
+                        if (time) {
+                            prayerTimes[prayer] = time;
+                        }
 
                         const el = document.getElementById(`prayer-${prayer}`);
                         if (el) {
-                            el.textContent = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            el.textContent = time 
+                                ? time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                                : '--:--';
                         }
                     }
                 }
@@ -1756,68 +2175,121 @@
             }
         }
 
-        // Mail/Package Notifications
+        // Notifications System (Mail, Packages, HA Notifications, etc.)
+        let haNotifications = []; // Store HA persistent notifications separately
+        
         async function loadMailNotifications() {
             try {
                 const states = await fetchHA('/api/states');
-                const mailItems = [];
+                const notificationItems = [];
 
-                // Define mail sensors to check (with _2 suffix for new integration)
-                const sensors = [
-                    { id: 'sensor.mail_usps_mail_2', icon: '📬', label: 'USPS Mail' },
-                    { id: 'sensor.mail_usps_packages_2', icon: '📦', label: 'USPS Package' },
-                    { id: 'sensor.mail_usps_delivering_2', icon: '🚚', label: 'USPS In Transit' },
-                    { id: 'sensor.mail_amazon_packages_2', icon: '📦', label: 'Amazon Package' },
-                    { id: 'sensor.mail_fedex_packages_2', icon: '📦', label: 'FedEx Package' },
-                    { id: 'sensor.mail_fedex_delivering_2', icon: '🚚', label: 'FedEx In Transit' },
-                    { id: 'sensor.mail_ups_packages_2', icon: '📦', label: 'UPS Package' },
-                    { id: 'sensor.mail_ups_delivering_2', icon: '🚚', label: 'UPS In Transit' },
+                // === MAIL & PACKAGES ===
+                const mailSensors = [
+                    { id: 'sensor.mail_usps_mail_2', icon: '📬', label: 'USPS Mail', category: 'mail' },
+                    { id: 'sensor.mail_usps_packages_2', icon: '📦', label: 'USPS Package', category: 'mail' },
+                    { id: 'sensor.mail_usps_delivering_2', icon: '🚚', label: 'USPS In Transit', category: 'mail' },
+                    { id: 'sensor.mail_amazon_packages_2', icon: '📦', label: 'Amazon Package', category: 'mail' },
+                    { id: 'sensor.mail_fedex_packages_2', icon: '📦', label: 'FedEx Package', category: 'mail' },
+                    { id: 'sensor.mail_fedex_delivering_2', icon: '🚚', label: 'FedEx In Transit', category: 'mail' },
+                    { id: 'sensor.mail_ups_packages_2', icon: '📦', label: 'UPS Package', category: 'mail' },
+                    { id: 'sensor.mail_ups_delivering_2', icon: '🚚', label: 'UPS In Transit', category: 'mail' },
                     // Fallback to non-_2 sensors
-                    { id: 'sensor.mail_usps_mail', icon: '📬', label: 'USPS Mail', fallback: true },
-                    { id: 'sensor.mail_usps_packages', icon: '📦', label: 'USPS Package', fallback: true },
-                    { id: 'sensor.mail_amazon_packages', icon: '📦', label: 'Amazon Package', fallback: true },
-                    { id: 'sensor.mail_fedex_packages', icon: '📦', label: 'FedEx Package', fallback: true },
-                    { id: 'sensor.mail_ups_packages', icon: '📦', label: 'UPS Package', fallback: true },
+                    { id: 'sensor.mail_usps_mail', icon: '📬', label: 'USPS Mail', category: 'mail', fallback: true },
+                    { id: 'sensor.mail_usps_packages', icon: '📦', label: 'USPS Package', category: 'mail', fallback: true },
+                    { id: 'sensor.mail_amazon_packages', icon: '📦', label: 'Amazon Package', category: 'mail', fallback: true },
+                    { id: 'sensor.mail_fedex_packages', icon: '📦', label: 'FedEx Package', category: 'mail', fallback: true },
+                    { id: 'sensor.mail_ups_packages', icon: '📦', label: 'UPS Package', category: 'mail', fallback: true },
                 ];
 
                 const seenLabels = new Set();
 
-                for (const sensor of sensors) {
-                    // Skip fallback if we already have data for this label
+                for (const sensor of mailSensors) {
                     if (sensor.fallback && seenLabels.has(sensor.label)) continue;
 
                     const entity = states.find(s => s.entity_id === sensor.id);
                     if (entity && entity.state !== 'unavailable' && entity.state !== 'unknown') {
                         const count = parseInt(entity.state) || 0;
                         if (count > 0) {
-                            mailItems.push({
+                            notificationItems.push({
                                 icon: sensor.icon,
                                 count: count,
-                                label: sensor.label
+                                label: sensor.label,
+                                category: sensor.category,
+                                id: sensor.id
                             });
                             seenLabels.add(sensor.label);
                         }
                     }
                 }
 
-                updateMailNotificationUI(mailItems);
+                // === HOME ASSISTANT PERSISTENT NOTIFICATIONS ===
+                try {
+                    const notifications = await fetchHA('/api/states');
+                    const persistentNotifs = notifications.filter(s => s.entity_id.startsWith('persistent_notification.'));
+                    
+                    haNotifications = persistentNotifs.map(n => ({
+                        icon: '🔔',
+                        count: 1,
+                        label: n.attributes.title || 'Notification',
+                        message: n.attributes.message || '',
+                        category: 'ha_notification',
+                        id: n.entity_id,
+                        notificationId: n.entity_id.replace('persistent_notification.', '')
+                    }));
+
+                    // Add HA notifications to the list
+                    notificationItems.push(...haNotifications);
+                } catch (e) {
+                    console.error('Error loading HA notifications:', e);
+                }
+
+                updateMailNotificationUI(notificationItems);
             } catch (e) {
-                console.error('Mail notification load error:', e);
+                console.error('Notification load error:', e);
             }
         }
+
+        // Dismiss HA persistent notification
+        async function dismissHANotification(notificationId) {
+            try {
+                await fetchHA('/api/services/persistent_notification/dismiss', 'POST', {
+                    notification_id: notificationId
+                });
+                // Refresh notifications
+                await loadMailNotifications();
+            } catch (e) {
+                console.error('Error dismissing HA notification:', e);
+            }
+        }
+
+        // Store all notifications (persists across refreshes, dismissed ones stay hidden from header)
+        let allNotifications = [];
+        let dismissedNotifications = new Set(JSON.parse(localStorage.getItem('dismissedNotifications') || '[]'));
 
         function updateMailNotificationUI(items) {
             const container = document.getElementById('mail-notification');
             const itemsDiv = document.getElementById('mail-items');
 
-            if (!items || items.length === 0) {
+            // Store all notifications
+            allNotifications = items || [];
+            
+            // Update the sidebar badge
+            updateMailBadge();
+            
+            // Update the notifications panel
+            updateNotificationsPanel();
+
+            // Filter out dismissed items for the header display
+            const visibleItems = allNotifications.filter(item => !dismissedNotifications.has(item.label));
+
+            if (!visibleItems || visibleItems.length === 0) {
                 container.classList.add('hidden');
                 return;
             }
 
-            // Build HTML
+            // Build HTML for header notification (only non-dismissed)
             let html = '';
-            for (const item of items) {
+            for (const item of visibleItems) {
                 html += `
                     <div class="mail-item">
                         <span class="mail-icon">${item.icon}</span>
@@ -1832,6 +2304,110 @@
             itemsDiv.innerHTML = html;
             container.classList.remove('hidden');
         }
+
+        function updateMailBadge() {
+            const badge = document.getElementById('mail-badge');
+            const totalCount = allNotifications.reduce((sum, item) => sum + item.count, 0);
+            
+            if (totalCount > 0) {
+                badge.textContent = totalCount > 99 ? '99+' : totalCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function toggleNotificationsPanel() {
+            const panel = document.getElementById('notifications-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        function closeNotificationsPanel() {
+            const panel = document.getElementById('notifications-panel');
+            panel.classList.add('hidden');
+        }
+
+        function updateNotificationsPanel() {
+            const listDiv = document.getElementById('notifications-list');
+            
+            if (!allNotifications || allNotifications.length === 0) {
+                listDiv.innerHTML = '<div class="notifications-empty">📭 No notifications</div>';
+                return;
+            }
+
+            // Group notifications by category
+            const mailItems = allNotifications.filter(n => n.category === 'mail');
+            const haItems = allNotifications.filter(n => n.category === 'ha_notification');
+
+            let html = '';
+
+            // Mail & Packages section
+            if (mailItems.length > 0) {
+                html += '<div class="text-xs text-slate-500 px-2 py-1 font-semibold">📬 MAIL & PACKAGES</div>';
+                for (const item of mailItems) {
+                    const isDismissed = dismissedNotifications.has(item.label);
+                    html += `
+                        <div class="notification-item ${isDismissed ? 'opacity-50' : ''}">
+                            <span class="notification-icon">${item.icon}</span>
+                            <div class="notification-content">
+                                <div class="notification-label">${item.label}</div>
+                                <div class="notification-count">${item.count} item${item.count > 1 ? 's' : ''}</div>
+                            </div>
+                            ${!isDismissed ? `<button class="notification-dismiss" onclick="dismissNotification('${item.label}')" title="Hide from header">✕</button>` : ''}
+                        </div>
+                    `;
+                }
+            }
+
+            // HA Notifications section
+            if (haItems.length > 0) {
+                html += '<div class="text-xs text-slate-500 px-2 py-1 mt-2 font-semibold">🔔 HOME ASSISTANT</div>';
+                for (const item of haItems) {
+                    html += `
+                        <div class="notification-item">
+                            <span class="notification-icon">${item.icon}</span>
+                            <div class="notification-content">
+                                <div class="notification-label">${item.label}</div>
+                                ${item.message ? `<div class="notification-count text-xs">${item.message.substring(0, 50)}${item.message.length > 50 ? '...' : ''}</div>` : ''}
+                            </div>
+                            <button class="notification-dismiss" onclick="dismissHANotification('${item.notificationId}')" title="Dismiss notification">✕</button>
+                        </div>
+                    `;
+                }
+            }
+
+            listDiv.innerHTML = html;
+        }
+
+        function dismissNotification(label) {
+            dismissedNotifications.add(label);
+            localStorage.setItem('dismissedNotifications', JSON.stringify([...dismissedNotifications]));
+            
+            // Update displays
+            updateMailNotificationUI(allNotifications);
+        }
+
+        // Clear dismissed notifications daily (or when mail count changes significantly)
+        function resetDismissedIfNewDay() {
+            const lastReset = localStorage.getItem('dismissedResetDate');
+            const today = new Date().toDateString();
+            if (lastReset !== today) {
+                dismissedNotifications.clear();
+                localStorage.setItem('dismissedNotifications', '[]');
+                localStorage.setItem('dismissedResetDate', today);
+            }
+        }
+
+        // Close notifications panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('notifications-panel');
+            const mailBtn = document.getElementById('btn-mail');
+            if (!panel.classList.contains('hidden') && 
+                !panel.contains(e.target) && 
+                !mailBtn.contains(e.target)) {
+                closeNotificationsPanel();
+            }
+        });
 
         // Theme switching
         function setTheme(dark) {
@@ -2026,12 +2602,32 @@
                         if (result.service_response && result.service_response[cal]) {
                             const calEvents = result.service_response[cal].events || [];
                             calEvents.forEach(e => {
+                                // Parse dates correctly - handle both object and string formats
+                                const parseEventDate = (dateVal) => {
+                                    if (!dateVal) return new Date();
+                                    
+                                    // Handle object format from HA: {date: "..."} or {dateTime: "..."}
+                                    let dateStr = dateVal;
+                                    if (typeof dateVal === 'object') {
+                                        dateStr = dateVal.dateTime || dateVal.date || '';
+                                    }
+                                    
+                                    if (!dateStr) return new Date();
+                                    
+                                    // If it's just a date (YYYY-MM-DD), parse as local midnight
+                                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                                        const [year, month, day] = dateStr.split('-').map(Number);
+                                        return new Date(year, month - 1, day);
+                                    }
+                                    // Otherwise parse normally (has time component)
+                                    return new Date(dateStr);
+                                };
                                 events.push({
                                     ...e,
                                     calendar: cal,
                                     color: CALENDAR_COLORS[cal],
-                                    startDate: new Date(e.start),
-                                    endDate: new Date(e.end)
+                                    startDate: parseEventDate(e.start),
+                                    endDate: parseEventDate(e.end)
                                 });
                             });
                         }
@@ -2312,13 +2908,32 @@
                 return date;
             });
 
-            const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+            const hours = Array.from({ length: 24 }, (_, i) => i); // Full 24 hours
             const today = new Date();
             const dark = isDarkMode;
 
             // Check if current week contains today
             const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
             const showTimeLine = todayIndex !== -1;
+
+            // Get all-day events for each day
+            const getAllDayEvents = (date) => {
+                return events.filter(e => {
+                    if (!visibleCalendars.has(e.calendar)) return false;
+                    const eventDate = e.startDate;
+                    const eventEndDate = e.endDate;
+                    const isAllDay = eventDate.getHours() === 0 && eventDate.getMinutes() === 0 &&
+                                    eventEndDate.getHours() === 0 && eventEndDate.getMinutes() === 0;
+                    if (!isAllDay) return false;
+                    const sameDay = eventDate.getDate() === date.getDate() &&
+                                   eventDate.getMonth() === date.getMonth() &&
+                                   eventDate.getFullYear() === date.getFullYear();
+                    return sameDay;
+                });
+            };
+
+            // Check if any day has all-day events
+            const hasAnyAllDayEvents = weekDays.some(d => getAllDayEvents(d).length > 0);
 
             container.innerHTML = `
                 <div class="h-full flex flex-col">
@@ -2340,6 +2955,20 @@
                             `;
                         }).join('')}
                     </div>
+                    ${hasAnyAllDayEvents ? `
+                    <div class="grid grid-cols-8 gap-2 pb-2 border-b ${dark ? 'border-slate-700' : 'border-slate-200'}">
+                        <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-16 text-right pr-2 pt-1">All Day</div>
+                        ${weekDays.map(date => {
+                            const allDayEvents = getAllDayEvents(date);
+                            const isToday = date.toDateString() === today.toDateString();
+                            return `
+                                <div class="${isToday ? (dark ? 'bg-indigo-900/20' : 'bg-indigo-50') : ''} min-h-8 p-1">
+                                    ${allDayEvents.map(e => `<div onclick="showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="text-xs px-1 py-0.5 mb-0.5 truncate text-white font-medium cursor-pointer hover:opacity-80 rounded" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    ` : ''}
                     <div id="week-time-grid" class="space-y-1 overflow-auto relative flex-1">
                         ${hours.map(hour => `
                             <div class="grid grid-cols-8 gap-2 min-h-16 hour-row" data-hour="${hour}">
@@ -2381,15 +3010,8 @@
             const currentHour = now.getHours();
             const currentMinutes = now.getMinutes();
 
-            // Grid shows hours 6-20 (6 AM to 8 PM)
-            const startHour = 6;
-            const endHour = 20;
-
-            // Check if current time is within the displayed range
-            if (currentHour < startHour || currentHour > endHour) {
-                timeLine.style.display = 'none';
-                return;
-            }
+            // Grid shows full 24 hours (0-23)
+            const startHour = 0;
 
             timeLine.style.display = 'block';
 
@@ -2423,15 +3045,8 @@
             const currentHour = now.getHours();
             const currentMinutes = now.getMinutes();
 
-            // Grid shows hours 6-20 (6 AM to 8 PM)
-            const startHour = 6;
-            const endHour = 20;
-
-            // Check if current time is within the displayed range
-            if (currentHour < startHour || currentHour > endHour) {
-                timeLine.style.display = 'none';
-                return;
-            }
+            // Grid shows full 24 hours (0-23)
+            const startHour = 0;
 
             timeLine.style.display = 'block';
 
@@ -2456,13 +3071,26 @@
         }
 
         function renderDayView(container) {
-            const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+            const hours = Array.from({ length: 24 }, (_, i) => i); // Full 24 hours
             const today = new Date();
             const isToday = currentDate.toDateString() === today.toDateString();
             const dark = isDarkMode;
 
             const dateKey = currentDate.getFullYear() + '-' + currentDate.getMonth() + '-' + currentDate.getDate();
             const dayWeather = weatherForecast[dateKey];
+
+            // Get all-day events for this day
+            const allDayEvents = events.filter(e => {
+                if (!visibleCalendars.has(e.calendar)) return false;
+                const eventDate = e.startDate;
+                const eventEndDate = e.endDate;
+                const isAllDay = eventDate.getHours() === 0 && eventDate.getMinutes() === 0 &&
+                                eventEndDate.getHours() === 0 && eventEndDate.getMinutes() === 0;
+                if (!isAllDay) return false;
+                return eventDate.getDate() === currentDate.getDate() &&
+                       eventDate.getMonth() === currentDate.getMonth() &&
+                       eventDate.getFullYear() === currentDate.getFullYear();
+            });
 
             container.innerHTML = `
                 <div class="h-full flex flex-col">
@@ -2474,6 +3102,14 @@
                         <div class="text-4xl font-light ${isToday ? 'text-indigo-400' : (dark ? 'text-white' : 'text-slate-800')} mt-1">${currentDate.getDate()}</div>
                         ${dayWeather ? `<div class="text-sm ${dark ? 'text-slate-400' : 'text-slate-500'} mt-1">High: ${dayWeather.high}°F/${dayWeather.highC}°C · Low: ${dayWeather.low}°F/${dayWeather.lowC}°C</div>` : ''}
                     </div>
+                    ${allDayEvents.length > 0 ? `
+                    <div class="flex gap-4 py-2 border-b ${dark ? 'border-slate-700' : 'border-slate-200'}">
+                        <div class="${dark ? 'text-slate-400' : 'text-slate-500'} text-xs w-20 text-right pt-1 flex-shrink-0">All Day</div>
+                        <div class="flex-1 flex flex-wrap gap-2">
+                            ${allDayEvents.map(e => `<div onclick="showEventDetails(events.find(ev => ev.summary === '${e.summary.replace(/'/g, "\\'")}' && ev.start === '${e.start}'))" class="px-3 py-1 text-white text-sm font-medium cursor-pointer hover:opacity-80 rounded" style="background-color: ${e.color}">${e.summary}</div>`).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
                     <div id="day-time-grid" class="space-y-1 overflow-auto relative flex-1 mt-4">
                         ${hours.map(hour => {
                             const dayEvents = getEventsForDateTime(currentDate, hour, true);
@@ -2530,11 +3166,20 @@
                 const eventHour = eventDate.getHours();
                 const eventEndHour = eventEndDate.getHours();
 
+                // Check if this is an all-day event (starts at midnight, ends at midnight next day)
+                const isAllDay = eventHour === 0 && eventDate.getMinutes() === 0 &&
+                                eventEndHour === 0 && eventEndDate.getMinutes() === 0;
+
                 const sameDay = eventDate.getDate() === date.getDate() &&
                                eventDate.getMonth() === date.getMonth() &&
                                eventDate.getFullYear() === date.getFullYear();
 
                 if (!sameDay) return false;
+
+                // All-day events show at the top (hour 0) only
+                if (isAllDay) {
+                    return hour === 0;
+                }
 
                 if (startOnly) {
                     return eventHour === hour;
@@ -2643,6 +3288,10 @@
             element.style.transform = 'scale(0.98)';
             element.style.boxShadow = 'inset 0 0 20px rgba(99, 102, 241, 0.3)';
             
+            // Prevent context menu on this element during long-press
+            element._contextMenuHandler = (e) => e.preventDefault();
+            element.addEventListener('contextmenu', element._contextMenuHandler);
+            
             longPressTimer = setTimeout(() => {
                 element.style.transform = '';
                 element.style.boxShadow = '';
@@ -2660,6 +3309,11 @@
             if (longPressTarget) {
                 longPressTarget.style.transform = '';
                 longPressTarget.style.boxShadow = '';
+                // Clean up context menu handler
+                if (longPressTarget._contextMenuHandler) {
+                    longPressTarget.removeEventListener('contextmenu', longPressTarget._contextMenuHandler);
+                    delete longPressTarget._contextMenuHandler;
+                }
                 longPressTarget = null;
             }
         }
