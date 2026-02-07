@@ -2939,9 +2939,30 @@
                 console.log(`Loading events from ${calendarsToLoad.length} calendars:`, calendarsToLoad);
                 events = [];
 
-                for (const cal of calendarsToLoad) {
+                // Parse event dates helper
+                const parseEventDate = (dateVal) => {
+                    if (!dateVal) return new Date();
+                    
+                    // Handle object format from HA: {date: "..."} or {dateTime: "..."}
+                    let dateStr = dateVal;
+                    if (typeof dateVal === 'object') {
+                        dateStr = dateVal.dateTime || dateVal.date || '';
+                    }
+                    
+                    if (!dateStr) return new Date();
+                    
+                    // If it's just a date (YYYY-MM-DD), parse as local midnight
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        return new Date(year, month - 1, day);
+                    }
+                    // Otherwise parse normally (has time component)
+                    return new Date(dateStr);
+                };
+
+                // Fetch all calendars in parallel for faster loading
+                const calendarPromises = calendarsToLoad.map(async (cal) => {
                     try {
-                        // Add cache-busting timestamp
                         const response = await fetch(`/api/services/calendar/get_events?return_response&_t=${Date.now()}`, {
                             method: 'POST',
                             headers: { 
@@ -2959,40 +2980,24 @@
 
                         if (result.service_response && result.service_response[cal]) {
                             const calEvents = result.service_response[cal].events || [];
-                            calEvents.forEach(e => {
-                                // Parse dates correctly - handle both object and string formats
-                                const parseEventDate = (dateVal) => {
-                                    if (!dateVal) return new Date();
-                                    
-                                    // Handle object format from HA: {date: "..."} or {dateTime: "..."}
-                                    let dateStr = dateVal;
-                                    if (typeof dateVal === 'object') {
-                                        dateStr = dateVal.dateTime || dateVal.date || '';
-                                    }
-                                    
-                                    if (!dateStr) return new Date();
-                                    
-                                    // If it's just a date (YYYY-MM-DD), parse as local midnight
-                                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                                        const [year, month, day] = dateStr.split('-').map(Number);
-                                        return new Date(year, month - 1, day);
-                                    }
-                                    // Otherwise parse normally (has time component)
-                                    return new Date(dateStr);
-                                };
-                                events.push({
-                                    ...e,
-                                    calendar: cal,
-                                    color: CALENDAR_COLORS[cal],
-                                    startDate: parseEventDate(e.start),
-                                    endDate: parseEventDate(e.end)
-                                });
-                            });
+                            return calEvents.map(e => ({
+                                ...e,
+                                calendar: cal,
+                                color: CALENDAR_COLORS[cal],
+                                startDate: parseEventDate(e.start),
+                                endDate: parseEventDate(e.end)
+                            }));
                         }
+                        return [];
                     } catch (err) {
                         console.error(`Error loading ${cal}:`, err);
+                        return [];
                     }
-                }
+                });
+
+                // Wait for all calendars to load
+                const results = await Promise.all(calendarPromises);
+                events = results.flat();
 
                 console.log(`Loaded ${events.length} events`);
                 renderCalendar();
