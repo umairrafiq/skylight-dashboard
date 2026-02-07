@@ -400,6 +400,100 @@ The dashboard automatically discovers:
 - `sensor.mail_*` - Mail and package notifications
 - `persistent_notification.*` - HA persistent notifications
 
+## Troubleshooting
+
+### Dashboard doesn't launch in fullscreen/kiosk mode
+
+**Problem:** When Chrome is already running, new windows ignore `--kiosk` or `--start-fullscreen` flags and open in the existing session as a regular window.
+
+**Solution:** The launcher script uses a separate Chrome profile (`~/.config/skylight-chrome`) to ensure kiosk mode works independently of your main browser session.
+
+If you're still having issues:
+```bash
+# Kill any existing dashboard instances
+pkill -f "skylight-chrome"
+
+# Relaunch
+./skylight-dashboard.sh
+```
+
+### Fullscreen not working on Wayland
+
+**Problem:** The `--start-fullscreen` flag doesn't work reliably on Wayland-based desktops (Ubuntu 22.04+, Fedora, etc.).
+
+**Solution:** The script uses `--kiosk` mode instead, which works properly on both X11 and Wayland.
+
+**To exit kiosk mode:** Press `Alt+F4` or `Ctrl+W`
+
+### Server not starting
+
+**Problem:** Dashboard shows connection error or blank page.
+
+**Solution:**
+```bash
+# Check server status
+systemctl --user status skylight-server
+
+# View logs
+journalctl --user -u skylight-server -f
+
+# Restart server
+systemctl --user restart skylight-server
+```
+
+### Screen goes to sleep while dashboard is open
+
+**Problem:** The system screen saver activates even with the dashboard running.
+
+**Solution:** The launcher script includes a background process that simulates user activity every 4 minutes. If this isn't working:
+```bash
+# Check if the watcher is running
+pgrep -f "skylight-chrome"
+
+# Disable screen blanking manually
+gsettings set org.gnome.desktop.session idle-delay 0
+```
+
+### Photos not loading in screensaver
+
+**Problem:** Screensaver shows "No photos available" or loading spinner.
+
+**Solutions:**
+1. **Local folder:** Ensure the path exists and contains images
+2. **SMB mount:** Verify the network share is mounted:
+   ```bash
+   mount | grep photos
+   ```
+3. **Synology Photos:** Check the share link is correct and accessible
+
+### MQTT not connecting
+
+**Problem:** MQTT status shows disconnected in settings.
+
+**Solution:**
+1. Verify MQTT broker is running on Home Assistant
+2. Check `config.py` has correct MQTT settings:
+   ```python
+   MQTT_ENABLED = True
+   MQTT_BROKER = "YOUR_HA_IP"
+   MQTT_PORT = 1883
+   MQTT_USERNAME = "mqtt_user"
+   MQTT_PASSWORD = "mqtt_pass"
+   ```
+3. Restart the server after config changes
+
+### Calendar/Weather not updating
+
+**Problem:** Data appears stale or shows errors.
+
+**Solution:**
+1. Check Home Assistant connection:
+   ```bash
+   curl -s -H "Authorization: Bearer YOUR_TOKEN" https://YOUR_HA:8123/api/
+   ```
+2. Verify `config.py` has correct HA_URL and HA_TOKEN
+3. Check browser console for errors (F12 → Console)
+
 ## License
 
 MIT License - feel free to use and modify.
