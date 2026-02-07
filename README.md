@@ -88,15 +88,29 @@ python3 server.py
 
 Navigate to: `http://localhost:8765/index.html`
 
-## Kiosk Mode (Optional)
+## Installation as a Service (Recommended)
 
-For a wall-mounted display, use the included scripts:
+For a wall-mounted display or always-on dashboard:
 
 ```bash
-# Install as a system service
-sudo ./install.sh
+# Install desktop app + systemd user service
+./install.sh
+```
 
-# Or run manually in kiosk mode
+This will:
+- Install Python dependencies
+- Create a desktop menu entry
+- Create and enable a systemd user service (auto-starts on login)
+
+Service commands:
+```bash
+systemctl --user status skylight-dashboard.service   # Check status
+systemctl --user restart skylight-dashboard.service  # Restart
+journalctl --user -u skylight-dashboard.service -f   # View logs
+```
+
+For kiosk mode (full-screen browser):
+```bash
 ./skylight-dashboard.sh start
 ```
 
@@ -111,8 +125,8 @@ skylight-dashboard/
 ├── config.py           # Your local config (not committed)
 ├── requirements.txt    # Python dependencies
 ├── skylight-dashboard.sh    # Kiosk mode launcher
-├── install.sh          # System service installer
-└── uninstall.sh        # System service uninstaller
+├── install.sh          # Desktop app + systemd service installer
+└── uninstall.sh        # Removes desktop app + systemd service
 ```
 
 ## Configuration

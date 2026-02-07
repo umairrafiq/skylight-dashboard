@@ -3,10 +3,21 @@
 
 APPS_DIR="$HOME/.local/share/applications"
 ICONS_DIR="$HOME/.local/share/icons"
+SYSTEMD_DIR="$HOME/.config/systemd/user"
+SERVICE_NAME="skylight-dashboard.service"
 
 echo "Uninstalling Skylight Dashboard..."
 
-# Stop any running instance
+# Stop and disable systemd service
+if [ -f "$SYSTEMD_DIR/$SERVICE_NAME" ]; then
+    systemctl --user stop "$SERVICE_NAME" 2>/dev/null
+    systemctl --user disable "$SERVICE_NAME" 2>/dev/null
+    rm -f "$SYSTEMD_DIR/$SERVICE_NAME"
+    systemctl --user daemon-reload
+    echo "Removed systemd service"
+fi
+
+# Stop any running instance (legacy)
 pkill -f "skylight-dashboard.sh" 2>/dev/null
 pkill -f "python3 -m http.server 8765" 2>/dev/null
 

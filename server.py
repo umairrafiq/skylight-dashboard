@@ -126,10 +126,11 @@ def init_weather_db():
         )
     ''')
     
-    # Clean up old data (older than 7 days)
-    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-    cursor.execute('DELETE FROM daily_forecast WHERE date < ?', (week_ago,))
-    cursor.execute('DELETE FROM hourly_forecast WHERE date < ?', (week_ago,))
+    # Clean up old data
+    daily_cutoff = (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d')
+    hourly_cutoff = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
+    cursor.execute('DELETE FROM daily_forecast WHERE date < ?', (daily_cutoff,))
+    cursor.execute('DELETE FROM hourly_forecast WHERE date < ?', (hourly_cutoff,))
     
     conn.commit()
     conn.close()
