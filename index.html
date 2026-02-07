@@ -2452,6 +2452,36 @@
                         }
                     }
                 }
+
+                // Calculate and display next prayer
+                const now = new Date();
+                const prayerNames = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+                let nextPrayer = null;
+                let nextPrayerTime = null;
+
+                for (const [prayer, time] of Object.entries(prayerTimes)) {
+                    if (time > now) {
+                        if (!nextPrayerTime || time < nextPrayerTime) {
+                            nextPrayer = prayer;
+                            nextPrayerTime = time;
+                        }
+                    }
+                }
+
+                const nextPrayerNameEl = document.getElementById('next-prayer-name');
+                const nextPrayerTimeEl = document.getElementById('next-prayer-time');
+                if (nextPrayerNameEl && nextPrayerTimeEl) {
+                    if (nextPrayer && nextPrayerTime) {
+                        nextPrayerNameEl.textContent = prayerNames[nextPrayer];
+                        nextPrayerTimeEl.textContent = nextPrayerTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    } else {
+                        // All prayers passed for today, show Fajr (tomorrow)
+                        nextPrayerNameEl.textContent = 'Fajr';
+                        nextPrayerTimeEl.textContent = prayerTimes.fajr 
+                            ? prayerTimes.fajr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' ⁺¹'
+                            : '--:--';
+                    }
+                }
             } catch (e) {
                 console.error('Weather load error:', e);
             }
