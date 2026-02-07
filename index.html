@@ -6,6 +6,7 @@
     <title>Skylight Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -156,20 +157,21 @@
             color: var(--text-primary);
         }
         .notifications-close {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 0.375rem;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
+            border-radius: 0.5rem;
+            background: rgba(100, 100, 100, 0.3);
+            border: 1px solid rgba(150, 150, 150, 0.3);
+            color: var(--text-primary);
             cursor: pointer;
             transition: all 0.2s;
         }
         .notifications-close:hover {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.5);
             color: #ef4444;
         }
         .notifications-list {
@@ -584,7 +586,10 @@
 
     <!-- Mail/Package Notification Overlay -->
     <div id="mail-notification" class="hidden overlay-light">
-        <div class="mail-card">
+        <div class="mail-card relative">
+            <button onclick="hideMailNotification()" class="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-red-500/80 text-white border border-slate-500/50 hover:border-red-400 transition-all shadow-lg" title="Close">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
             <div id="mail-items">
                 <!-- Populated by JS -->
             </div>
@@ -1101,8 +1106,8 @@
         <div id="notifications-panel" class="notifications-panel hidden">
             <div class="notifications-header">
                 <h3>🔔 Notifications</h3>
-                <button class="notifications-close" onclick="closeNotificationsPanel()">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button class="notifications-close" onclick="closeNotificationsPanel()" title="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div id="notifications-list" class="notifications-list">
@@ -1249,8 +1254,9 @@
         // State
         let currentDate = new Date();
         let currentView = localStorage.getItem('currentView') || 'month';
+        let shouldScrollToTime = true; // Only scroll to current time on view switch, not data refresh
         // Dashboard Version
-        const DASHBOARD_VERSION = '1.2.2';
+        const DASHBOARD_VERSION = '1.5.0';
 
         // Connection State (with grace period - show indicator only after 3 consecutive failures)
         let isConnected = true; // Assume connected initially
@@ -1432,6 +1438,22 @@
         let prayerTimes = {}; // Store prayer times for alerts
         let weatherForecast = {}; // Store weather forecast by date
         let autoDismissTimer = null; // Timer for auto-dismissing alarms after 5 minutes
+        
+        // Track items we've already announced to prevent duplicate announcements
+        // Persisted in session storage to survive page reloads within the same session
+        let announcedItems = new Set(JSON.parse(sessionStorage.getItem('announcedItems') || '[]'));
+        function markAsAnnounced(key) {
+            announcedItems.add(key);
+            // Keep only last 200 items to prevent memory bloat
+            if (announcedItems.size > 200) {
+                const arr = Array.from(announcedItems);
+                announcedItems = new Set(arr.slice(-100));
+            }
+            sessionStorage.setItem('announcedItems', JSON.stringify(Array.from(announcedItems)));
+        }
+        function wasAnnounced(key) {
+            return announcedItems.has(key);
+        }
         const ALERT_MINUTES_BEFORE = 5; // Alert 5 minutes before event
         const AUTO_DISMISS_MS = 5 * 60 * 1000; // Auto-dismiss alarms after 5 minutes
 
@@ -1475,6 +1497,23 @@
         let allTodos = {};
 
         // API Helper with connection tracking (graceful - 3 failures before showing indicator)
+        // Track server version for auto-refresh
+        let serverVersion = null;
+        
+        // Check server version from WebSocket messages - auto-refresh when version changes
+        function checkServerVersion(version) {
+            if (!version) return;
+            if (serverVersion === null) {
+                // First time seeing version, store it
+                serverVersion = version;
+                console.log('Dashboard version:', version);
+            } else if (version !== serverVersion) {
+                // Version changed - hard refresh!
+                console.log('Server version changed:', serverVersion, '->', version, '- refreshing...');
+                location.reload(true);
+            }
+        }
+        
         async function fetchHA(endpoint, method = 'GET', body = null) {
             const options = {
                 method,
@@ -1488,6 +1527,21 @@
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
+                
+                // Check for version change
+                const newVersion = response.headers.get('X-Dashboard-Version');
+                if (newVersion && serverVersion && newVersion !== serverVersion) {
+                    console.log(`Dashboard version changed: ${serverVersion} -> ${newVersion}`);
+                    console.log('Reloading page to get latest version...');
+                    // Small delay to let current operation complete
+                    setTimeout(() => {
+                        location.reload(true); // Hard refresh
+                    }, 500);
+                }
+                if (newVersion) {
+                    serverVersion = newVersion;
+                }
+                
                 // Connection successful - reset failure counter
                 handleConnectionSuccess();
                 return response.json();
@@ -1608,17 +1662,31 @@
             // Set version number
             document.getElementById('dashboard-version').textContent = `Skylight Dashboard v${DASHBOARD_VERSION}`;
 
-            // Initial data load - silently, indicator shows only after 3 failures
+            // Initial data load - prioritized for fast display
             try {
                 resetDismissedIfNewDay(); // Clear dismissed notifications daily
+                
+                // Priority 1: Calendar (most visible) - load first
                 await loadAvailableCalendars();
-                await loadAvailableTodoLists();
-                await loadWeather();
-                await loadMailNotifications();
                 await loadCalendarEvents();
-                await loadTodos();
-                // If we got here, we're connected
+                
+                // Restore view and render calendar immediately
+                shouldScrollToTime = (currentView === 'week' || currentView === 'day');
+                setView(currentView);
+                setActiveTab(activeTab);
+                renderCalendar();
+                
+                // Mark as connected
                 handleConnectionSuccess();
+                
+                // Priority 2: Load everything else in parallel (background)
+                Promise.all([
+                    loadMailNotifications(),
+                    loadWeather(),
+                    loadTodos(),
+                    loadAvailableTodoLists()
+                ]).catch(e => console.error('Background load error:', e));
+                
             } catch (e) {
                 console.error('Initial load failed:', e);
                 // handleConnectionFailure already called by fetchHA
@@ -1628,12 +1696,6 @@
                 }
             }
 
-            // Restore saved UI settings
-            setView(currentView);
-            setActiveTab(activeTab);
-
-            renderCalendar();
-
             // Check for upcoming events every 30 seconds
             checkUpcomingEvents();
             setInterval(checkUpcomingEvents, 30000);
@@ -1641,20 +1703,52 @@
             // Refresh all Home Assistant data every hour (3600000ms)
             setInterval(async () => {
                 console.log('Hourly refresh triggered at', new Date().toLocaleTimeString());
-                await refreshData();
+                isBackgroundRefresh = true;
+                try { await refreshData(); } finally { isBackgroundRefresh = false; }
             }, 3600000);
 
             // Refresh weather more frequently - every 30 minutes
             setInterval(async () => {
                 console.log('Weather refresh triggered at', new Date().toLocaleTimeString());
-                await loadWeather();
+                isBackgroundRefresh = true;
+                try { await loadWeather(); } finally { isBackgroundRefresh = false; }
             }, 1800000);
 
             // Refresh mail notifications every 15 minutes
             setInterval(async () => {
                 console.log('Mail notification refresh at', new Date().toLocaleTimeString());
-                await loadMailNotifications();
+                isBackgroundRefresh = true;
+                try {
+                    await loadMailNotifications();
+                    
+                    // Check for new notifications and announce (only if not already announced)
+                    for (const notif of allNotifications) {
+                        const key = `notif|${notif.category}|${notif.id || notif.label}`;
+                        if (!wasAnnounced(key)) {
+                            console.log('New notification detected:', notif.label);
+                            markAsAnnounced(key);
+                            // Include full message for HA notifications
+                            if (notif.category === 'ha_notification' && notif.message) {
+                                announceNewItem('notification', `${notif.label}: ${notif.message}`, notif.message);
+                            } else {
+                                announceNewItem(notif.category === 'ha_notification' ? 'notification' : 'mail', notif.label);
+                            }
+                            break; // Only announce one at a time
+                        }
+                    }
+                } finally { isBackgroundRefresh = false; }
             }, 900000);
+
+            // Refresh calendar every 5 minutes (in addition to real-time events)
+            setInterval(async () => {
+                console.log('Calendar refresh at', new Date().toLocaleTimeString());
+                isBackgroundRefresh = true;
+                try {
+                    await loadCalendarEvents();
+                    renderCalendar();
+                    // Don't announce on periodic refresh - only on WebSocket events for new additions
+                } finally { isBackgroundRefresh = false; }
+            }, 300000);
 
             // Schedule daily midnight refresh for fresh forecast data
             scheduleMidnightRefresh();
@@ -1813,6 +1907,18 @@
                     currentTTSAudio.pause();
                     currentTTSAudio = null;
                 }
+                
+                // Sanitize text for TTS - remove emojis and clean up newlines
+                let cleanText = text
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // emoticons
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // misc symbols
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // transport
+                    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // flags
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // misc symbols
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // dingbats
+                    .replace(/\n+/g, '. ')                   // newlines to periods
+                    .replace(/\s+/g, ' ')                    // multiple spaces
+                    .trim();
 
                 // Get TTS audio URL from Home Assistant
                 const response = await fetch('/api/tts_get_url', {
@@ -1820,7 +1926,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         platform: TTS_PLATFORM,
-                        message: text
+                        message: cleanText
                     })
                 });
 
@@ -1850,6 +1956,79 @@
                     utterance.volume = alarmVolume;
                     speechSynthesis.speak(utterance);
                 }
+            }
+        }
+
+        // Announce new calendar events or notifications
+        let lastAnnouncementTime = 0;
+        const ANNOUNCEMENT_COOLDOWN = 5000; // 5 seconds between announcements
+
+        function announceNewItem(type, itemName, details = '') {
+            // Prevent rapid-fire announcements
+            const now = Date.now();
+            if (now - lastAnnouncementTime < ANNOUNCEMENT_COOLDOWN) {
+                console.log('Announcement skipped (cooldown):', type, itemName);
+                return;
+            }
+            lastAnnouncementTime = now;
+
+            let message = '';
+            let icon = '📢';
+            switch (type) {
+                case 'calendar':
+                    message = `New calendar event: ${itemName}`;
+                    icon = '📅';
+                    break;
+                case 'notification':
+                    message = `New notification: ${itemName}`;
+                    icon = '🔔';
+                    break;
+                case 'mail':
+                    message = `New mail: ${itemName}`;
+                    icon = '📬';
+                    break;
+                default:
+                    message = `New ${type}: ${itemName}`;
+            }
+
+            console.log('📢 Announcing:', message);
+            
+            // Add to announcements list for review
+            addAnnouncement(type, itemName, details);
+            
+            // Play a short attention sound first
+            playAnnouncementChime().then(() => {
+                // Then speak the announcement
+                setTimeout(() => speakText(message), 300);
+            });
+        }
+
+        async function playAnnouncementChime() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioContext.currentTime;
+
+                // Pleasant two-note chime
+                const playNote = (freq, startTime, duration) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.value = freq;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.2 * alarmVolume, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+
+                playNote(523, now, 0.15);        // C5
+                playNote(659, now + 0.15, 0.2);  // E5
+                
+                return new Promise(resolve => setTimeout(resolve, 400));
+            } catch (e) {
+                console.log('Could not play announcement chime:', e);
+                return Promise.resolve();
             }
         }
 
@@ -2223,22 +2402,26 @@
                 }
 
                 // === HOME ASSISTANT PERSISTENT NOTIFICATIONS ===
+                // Use dedicated WebSocket API endpoint (HA 2025+ doesn't expose notifications in /api/states)
                 try {
-                    const notifications = await fetchHA('/api/states');
-                    const persistentNotifs = notifications.filter(s => s.entity_id.startsWith('persistent_notification.'));
+                    const response = await fetch('/api/notifications');
+                    const data = await response.json();
                     
-                    haNotifications = persistentNotifs.map(n => ({
-                        icon: '🔔',
-                        count: 1,
-                        label: n.attributes.title || 'Notification',
-                        message: n.attributes.message || '',
-                        category: 'ha_notification',
-                        id: n.entity_id,
-                        notificationId: n.entity_id.replace('persistent_notification.', '')
-                    }));
+                    if (data.success && data.notifications) {
+                        haNotifications = data.notifications.map(n => ({
+                            icon: '🔔',
+                            count: 1,
+                            label: n.title || 'Notification',
+                            message: n.message || '',
+                            category: 'ha_notification',
+                            id: `persistent_notification.${n.notification_id}`,
+                            notificationId: n.notification_id,
+                            createdAt: n.created_at
+                        }));
 
-                    // Add HA notifications to the list
-                    notificationItems.push(...haNotifications);
+                        // Add HA notifications to the list
+                        notificationItems.push(...haNotifications);
+                    }
                 } catch (e) {
                     console.error('Error loading HA notifications:', e);
                 }
@@ -2265,6 +2448,42 @@
         // Store all notifications (persists across refreshes, dismissed ones stay hidden from header)
         let allNotifications = [];
         let dismissedNotifications = new Set(JSON.parse(localStorage.getItem('dismissedNotifications') || '[]'));
+        
+        // Store announcements (calendar events, etc.) - persists in sessionStorage
+        let recentAnnouncements = JSON.parse(sessionStorage.getItem('recentAnnouncements') || '[]');
+        
+        function addAnnouncement(type, title, details = '') {
+            const announcement = {
+                id: `ann_${Date.now()}`,
+                type: type,
+                title: title,
+                details: details,
+                time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+                timestamp: Date.now()
+            };
+            recentAnnouncements.unshift(announcement); // Add to beginning
+            // Keep only last 20 announcements
+            if (recentAnnouncements.length > 20) {
+                recentAnnouncements = recentAnnouncements.slice(0, 20);
+            }
+            sessionStorage.setItem('recentAnnouncements', JSON.stringify(recentAnnouncements));
+            updateNotificationsPanel();
+            updateMailBadge();
+        }
+        
+        function clearAnnouncement(id) {
+            recentAnnouncements = recentAnnouncements.filter(a => a.id !== id);
+            sessionStorage.setItem('recentAnnouncements', JSON.stringify(recentAnnouncements));
+            updateNotificationsPanel();
+            updateMailBadge();
+        }
+        
+        function clearAllAnnouncements() {
+            recentAnnouncements = [];
+            sessionStorage.setItem('recentAnnouncements', JSON.stringify(recentAnnouncements));
+            updateNotificationsPanel();
+            updateMailBadge();
+        }
 
         function updateMailNotificationUI(items) {
             const container = document.getElementById('mail-notification');
@@ -2307,7 +2526,9 @@
 
         function updateMailBadge() {
             const badge = document.getElementById('mail-badge');
-            const totalCount = allNotifications.reduce((sum, item) => sum + item.count, 0);
+            const notifCount = allNotifications ? allNotifications.reduce((sum, item) => sum + item.count, 0) : 0;
+            const announcementCount = recentAnnouncements.length;
+            const totalCount = notifCount + announcementCount;
             
             if (totalCount > 0) {
                 badge.textContent = totalCount > 99 ? '99+' : totalCount;
@@ -2327,23 +2548,52 @@
             panel.classList.add('hidden');
         }
 
+        function hideMailNotification() {
+            const container = document.getElementById('mail-notification');
+            container.classList.add('hidden');
+        }
+
         function updateNotificationsPanel() {
             const listDiv = document.getElementById('notifications-list');
             
-            if (!allNotifications || allNotifications.length === 0) {
+            const hasNotifications = (allNotifications && allNotifications.length > 0) || recentAnnouncements.length > 0;
+            
+            if (!hasNotifications) {
                 listDiv.innerHTML = '<div class="notifications-empty">📭 No notifications</div>';
                 return;
             }
 
             // Group notifications by category
-            const mailItems = allNotifications.filter(n => n.category === 'mail');
-            const haItems = allNotifications.filter(n => n.category === 'ha_notification');
+            const mailItems = allNotifications ? allNotifications.filter(n => n.category === 'mail') : [];
+            const haItems = allNotifications ? allNotifications.filter(n => n.category === 'ha_notification') : [];
 
             let html = '';
+            
+            // Recent Announcements section (at top)
+            if (recentAnnouncements.length > 0) {
+                html += `
+                    <div class="text-xs text-slate-500 px-2 py-1 font-semibold flex justify-between items-center">
+                        <span>📣 RECENT ANNOUNCEMENTS</span>
+                        <button onclick="clearAllAnnouncements()" class="text-[10px] text-slate-400 hover:text-red-400" title="Clear all">Clear</button>
+                    </div>`;
+                for (const ann of recentAnnouncements) {
+                    const icon = ann.type === 'calendar' ? '📅' : ann.type === 'notification' ? '🔔' : ann.type === 'mail' ? '📬' : '📢';
+                    html += `
+                        <div class="notification-item">
+                            <span class="notification-icon">${icon}</span>
+                            <div class="notification-content">
+                                <div class="notification-label">${ann.title}</div>
+                                <div class="notification-count text-xs text-slate-400">${ann.time}${ann.details ? ' • ' + ann.details.substring(0, 30) : ''}</div>
+                            </div>
+                            <button class="notification-dismiss" onclick="clearAnnouncement('${ann.id}')" title="Dismiss">✕</button>
+                        </div>
+                    `;
+                }
+            }
 
             // Mail & Packages section
             if (mailItems.length > 0) {
-                html += '<div class="text-xs text-slate-500 px-2 py-1 font-semibold">📬 MAIL & PACKAGES</div>';
+                html += '<div class="text-xs text-slate-500 px-2 py-1 mt-2 font-semibold">📬 MAIL & PACKAGES</div>';
                 for (const item of mailItems) {
                     const isDismissed = dismissedNotifications.has(item.label);
                     html += `
@@ -2583,13 +2833,18 @@
 
                 // Use dynamically fetched calendars, only load visible ones
                 const calendarsToLoad = availableCalendars.map(c => c.entity_id);
+                console.log(`Loading events from ${calendarsToLoad.length} calendars:`, calendarsToLoad);
                 events = [];
 
                 for (const cal of calendarsToLoad) {
                     try {
-                        const response = await fetch(`/api/services/calendar/get_events?return_response`, {
+                        // Add cache-busting timestamp
+                        const response = await fetch(`/api/services/calendar/get_events?return_response&_t=${Date.now()}`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'no-cache'
+                            },
                             body: JSON.stringify({
                                 entity_id: cal,
                                 start_date_time: formatDate(start),
@@ -2809,6 +3064,13 @@
             document.getElementById('calendar-title').textContent = title;
 
             const container = document.getElementById('calendar-content');
+            
+            // Save scroll position before re-rendering (for week/day views)
+            let savedScrollTop = 0;
+            const existingGrid = document.getElementById('week-time-grid') || document.getElementById('day-time-grid');
+            if (existingGrid && !shouldScrollToTime) {
+                savedScrollTop = existingGrid.scrollTop;
+            }
 
             if (currentView === 'month') {
                 renderMonthView(container);
@@ -2816,6 +3078,17 @@
                 renderWeekView(container);
             } else {
                 renderDayView(container);
+            }
+            
+            // Restore scroll position after rendering (if not scrolling to current time)
+            if (savedScrollTop > 0 && !shouldScrollToTime) {
+                const newGrid = document.getElementById('week-time-grid') || document.getElementById('day-time-grid');
+                if (newGrid) {
+                    // Use setTimeout to ensure DOM is fully rendered
+                    setTimeout(() => {
+                        newGrid.scrollTop = savedScrollTop;
+                    }, 60);
+                }
             }
         }
 
@@ -2862,9 +3135,11 @@
                             const dateKey = `${year}-${month}-${item.day}`;
                             const dayWeather = item.isCurrentMonth ? weatherForecast[dateKey] : null;
 
-                            const cellBg = item.isCurrentMonth
-                                ? (dark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-50 hover:bg-slate-100')
-                                : (dark ? 'bg-slate-800/20' : 'bg-slate-100/50');
+                            const cellBg = isToday
+                                ? (dark ? 'bg-indigo-900/40 hover:bg-indigo-900/50 ring-2 ring-indigo-500/50' : 'bg-indigo-100 hover:bg-indigo-200 ring-2 ring-indigo-400/50')
+                                : item.isCurrentMonth
+                                    ? (dark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-50 hover:bg-slate-100')
+                                    : (dark ? 'bg-slate-800/20' : 'bg-slate-100/50');
 
                             const dayTextColor = isToday
                                 ? 'bg-indigo-600 text-white'
@@ -2994,9 +3269,10 @@
                 </div>
             `;
 
-            // Position the time line if showing and scroll to it
+            // Position the time line (but only scroll on initial view, not on data refresh)
+            // Use setTimeout to ensure DOM is fully rendered
             if (showTimeLine) {
-                updateWeekTimeIndicator(true);
+                setTimeout(() => updateWeekTimeIndicator(shouldScrollToTime), 50);
             }
         }
 
@@ -3032,6 +3308,7 @@
             // Scroll to show the current time line
             if (scrollToLine) {
                 timeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                shouldScrollToTime = false; // Don't scroll again on data refresh
             }
         }
 
@@ -3067,6 +3344,7 @@
             // Scroll to show the current time line
             if (scrollToLine) {
                 timeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                shouldScrollToTime = false; // Don't scroll again on data refresh
             }
         }
 
@@ -3138,9 +3416,10 @@
                 </div>
             `;
 
-            // Position the time line if showing today and scroll to it
+            // Position the time line (but only scroll on initial view, not on data refresh)
+            // Use setTimeout to ensure DOM is fully rendered
             if (isToday) {
-                updateDayTimeIndicator(true);
+                setTimeout(() => updateDayTimeIndicator(shouldScrollToTime), 50);
             }
         }
 
@@ -3237,6 +3516,8 @@
                     btn.className = 'view-btn px-5 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-700/50';
                 }
             });
+            // Scroll to current time when switching to week/day view
+            shouldScrollToTime = (view === 'week' || view === 'day');
             renderCalendar();
         }
 
@@ -3689,21 +3970,50 @@
         // Refresh
         async function refreshData() {
             const btn = document.getElementById('refresh-btn');
-            btn.querySelector('svg').classList.add('loading-spin');
+            const svg = btn.querySelector('svg');
+            svg.classList.add('loading-spin');
 
-            // Refresh entity lists first
-            await Promise.all([
-                loadAvailableCalendars(),
-                loadAvailableTodoLists()
-            ]);
-
-            await Promise.all([
-                loadWeather(),
-                loadCalendarEvents(),
-                loadTodos()
-            ]);
-
-            btn.querySelector('svg').classList.remove('loading-spin');
+            try {
+                // Priority 1: Calendar events (most important, load and render immediately)
+                console.log('Refresh: Loading calendar events...');
+                const oldEventKeys = new Set(events.map(e => `${e.summary}|${e.start}`));
+                await loadCalendarEvents();
+                console.log(`Refresh: Loaded ${events.length} events (was ${oldEventKeys.size})`);
+                renderCalendar();
+                
+                // Announce any new events added since last refresh
+                for (const event of events) {
+                    const eventKey = `${event.summary}|${event.start}`;
+                    if (!oldEventKeys.has(eventKey)) {
+                        // New event found - announce it
+                        const eventStart = new Date(event.start);
+                        const hoursUntilEvent = (eventStart - new Date()) / (1000 * 60 * 60);
+                        // Only announce events within the next 7 days
+                        if (hoursUntilEvent > -1 && hoursUntilEvent < 168) {
+                            console.log('New event detected on refresh:', event.summary);
+                            announceNewItem('calendar', event.summary);
+                            break; // Only announce one at a time
+                        }
+                    }
+                }
+                
+                // Priority 2: Notifications (load in background, don't wait)
+                loadMailNotifications().catch(e => console.error('Notification refresh error:', e));
+                
+                // Priority 3: Everything else in parallel (don't block UI)
+                Promise.all([
+                    loadWeather(),
+                    loadTodos(),
+                    loadAvailableCalendars(),
+                    loadAvailableTodoLists()
+                ]).catch(e => console.error('Background refresh error:', e));
+                
+            } catch (e) {
+                console.error('Refresh error:', e);
+            }
+            
+            // Remove spinner after calendar is loaded (don't wait for everything)
+            svg.classList.remove('loading-spin');
         }
 
         // Event Alert System
@@ -4100,6 +4410,9 @@
             }
         }
 
+        // Flag to prevent background refreshes from waking screensaver
+        let isBackgroundRefresh = false;
+        
         // Idle Detector Class
         class IdleDetector {
             constructor(options = {}) {
@@ -4135,6 +4448,9 @@
             }
 
             handleActivity() {
+                // Ignore activity during background refreshes
+                if (isBackgroundRefresh) return;
+                
                 if (this.isIdle) {
                     this.isIdle = false;
                     this.onActive();
@@ -4688,33 +5004,49 @@
                 const activeBg = this.currentBg === 1 ? this.bg1 : this.bg2;
                 const inactiveBg = this.currentBg === 1 ? this.bg2 : this.bg1;
 
-                // Remove old Ken Burns classes
-                this.kenBurnsEffects.forEach(cls => {
-                    inactiveBg.classList.remove(cls);
-                });
+                // Preload image before transitioning for smooth crossfade
+                const img = new Image();
+                img.onload = () => {
+                    // Remove old Ken Burns classes
+                    this.kenBurnsEffects.forEach(cls => {
+                        inactiveBg.classList.remove(cls);
+                    });
 
-                // Set new image on inactive layer
-                inactiveBg.style.backgroundImage = `url(${url})`;
+                    // Set new image on inactive layer (now fully loaded)
+                    inactiveBg.style.backgroundImage = `url(${url})`;
 
-                // Add Ken Burns effect
-                if (this.kenBurnsEnabled) {
-                    const effect = this.kenBurnsEffects[Math.floor(Math.random() * this.kenBurnsEffects.length)];
-                    inactiveBg.classList.add(effect);
-                }
+                    // Add Ken Burns effect
+                    if (this.kenBurnsEnabled) {
+                        const effect = this.kenBurnsEffects[Math.floor(Math.random() * this.kenBurnsEffects.length)];
+                        inactiveBg.classList.add(effect);
+                    }
 
-                // Crossfade
-                inactiveBg.style.opacity = '1';
-                activeBg.style.opacity = '0';
+                    // Bring new image to front and fade it in over the old one
+                    inactiveBg.style.zIndex = '2';
+                    activeBg.style.zIndex = '1';
+                    inactiveBg.style.opacity = '1';
+                    
+                    // After transition completes, hide old image and reset z-index
+                    setTimeout(() => {
+                        activeBg.style.opacity = '0';
+                    }, 1600); // Slightly after the 1.5s CSS transition
 
-                this.currentBg = this.currentBg === 1 ? 2 : 1;
+                    this.currentBg = this.currentBg === 1 ? 2 : 1;
 
-                // Update metadata
-                this.updateMetadata(photo);
+                    // Update metadata
+                    this.updateMetadata(photo);
 
-                // Analyze image brightness and adjust overlay contrast
-                analyzeImageBrightness(url, (isLight) => {
-                    setOverlayTheme(isLight);
-                });
+                    // Analyze image brightness and adjust overlay contrast
+                    analyzeImageBrightness(url, (isLight) => {
+                        setOverlayTheme(isLight);
+                    });
+                };
+                img.onerror = () => {
+                    console.error('Failed to load photo:', url);
+                    // Skip to next photo on error
+                    this.showNextPhoto();
+                };
+                img.src = url;
             }
 
             updateMetadata(photo) {
@@ -4951,8 +5283,19 @@
             handleMessage(data) {
                 try {
                     const cmd = JSON.parse(data);
-                    const command = cmd.command;
 
+                    // Check server version on every message
+                    if (cmd.version) {
+                        checkServerVersion(cmd.version);
+                    }
+
+                    // Handle screenshot request
+                    if (cmd.type === 'screenshot_request') {
+                        this.takeScreenshot();
+                        return;
+                    }
+
+                    const command = cmd.command;
                     console.log('MQTT Bridge: Received command:', command);
 
                     switch (command) {
@@ -5032,8 +5375,122 @@
                         default:
                             console.log('MQTT Bridge: Unknown command:', command);
                     }
+
+                    // Handle HA real-time events (from HA WebSocket subscription)
+                    if (cmd.type === 'ha_event') {
+                        this.handleHAEvent(cmd);
+                    }
                 } catch (e) {
                     console.error('MQTT Bridge: Error handling message:', e);
+                }
+            }
+
+            handleHAEvent(event) {
+                // Check server version on every event
+                if (event.version) {
+                    checkServerVersion(event.version);
+                }
+
+                const category = event.category;
+                const eventType = event.event_type;
+                const entityId = event.entity_id;
+                const data = event.data || {};
+
+                console.log(`HA Event: ${category} - ${entityId}`);
+
+                switch (category) {
+                    case 'notification':
+                        // Get the specific notification ID from the event
+                        const serviceData = data.service_data || {};
+                        const eventNotifId = serviceData.notification_id;
+                        const eventTitle = serviceData.title || 'Notification';
+                        const eventMessage = serviceData.message || '';
+                        
+                        console.log('HA Event: Notification -', data.service, eventNotifId, eventTitle);
+                        
+                        // If this is a create event with data, announce it directly
+                        // Use timestamp in key so same notification_id can be announced again if recreated
+                        if (data.service === 'create' && eventNotifId) {
+                            // Key includes current minute to allow re-announcement after a minute
+                            const timeKey = Math.floor(Date.now() / 60000); // Changes every minute
+                            const key = `notif|${eventNotifId}|${timeKey}`;
+                            if (!wasAnnounced(key)) {
+                                markAsAnnounced(key);
+                                const fullText = eventMessage ? `${eventTitle}: ${eventMessage}` : eventTitle;
+                                console.log('Announcing notification:', fullText.substring(0, 50));
+                                announceNewItem('notification', fullText, eventMessage);
+                            } else {
+                                console.log('Notification already announced this minute:', eventNotifId);
+                            }
+                        }
+                        
+                        // Refresh the notifications list (but don't announce again)
+                        loadMailNotifications();
+                        break;
+
+                    case 'mail':
+                        // Refresh mail notifications and announce
+                        console.log('HA Event: Mail changed, refreshing...');
+                        loadMailNotifications().then(() => {
+                            // Check for unannounced mail
+                            const mailItems = allNotifications.filter(n => n.category === 'mail');
+                            for (const mailItem of mailItems) {
+                                const key = `notif|mail|${mailItem.id || mailItem.label}`;
+                                if (!wasAnnounced(key)) {
+                                    markAsAnnounced(key);
+                                    announceNewItem('mail', `${mailItem.count} ${mailItem.label}`);
+                                    break;
+                                }
+                            }
+                        });
+                        break;
+
+                    case 'calendar':
+                        // Refresh calendar events (no announcement - too many false positives from HA polling)
+                        console.log('HA Event: Calendar changed, refreshing...');
+                        loadCalendarEvents().then(() => renderCalendar());
+                        break;
+
+                    case 'todo':
+                        // Refresh todos
+                        console.log('HA Event: Todo changed, refreshing...');
+                        loadTodos();
+                        break;
+
+                    case 'weather':
+                        // Refresh weather
+                        console.log('HA Event: Weather changed, refreshing...');
+                        loadWeather();
+                        break;
+
+                    case 'sensor':
+                        // Handle door/motion sensors
+                        const newState = data.new_state;
+                        if (newState && newState.state === 'on') {
+                            if (entityId.includes('doorbell')) {
+                                console.log('HA Event: Doorbell pressed!');
+                                // Could trigger camera popup here
+                            } else if (entityId.includes('motion')) {
+                                console.log('HA Event: Motion detected:', entityId);
+                            } else if (entityId.includes('door')) {
+                                console.log('HA Event: Door opened:', entityId);
+                            }
+                        }
+                        break;
+
+                    case 'control':
+                        // Update controls page if visible
+                        console.log('HA Event: Control changed:', entityId);
+                        if (typeof updateControlEntity === 'function') {
+                            updateControlEntity(entityId, data.new_state);
+                        }
+                        break;
+
+                    case 'prayer':
+                        // Refresh prayer times
+                        console.log('HA Event: Prayer time changed');
+                        loadWeather(); // Prayer times are loaded with weather
+                        break;
                 }
             }
 
@@ -5095,6 +5552,35 @@
                     }
                 } catch (e) {
                     console.error('MQTT Bridge: Error playing alarm:', e);
+                }
+            }
+
+            async takeScreenshot() {
+                console.log('MQTT Bridge: Taking screenshot...');
+                try {
+                    // Use html2canvas to capture the page
+                    const canvas = await html2canvas(document.body, {
+                        scale: 1,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: null,
+                        logging: false
+                    });
+                    
+                    // Convert to base64 PNG
+                    const imageData = canvas.toDataURL('image/png');
+                    console.log('MQTT Bridge: Screenshot captured, size:', imageData.length);
+                    
+                    // Send to server via WebSocket
+                    if (this.ws && this.connected) {
+                        this.ws.send(JSON.stringify({
+                            type: 'screenshot_data',
+                            image: imageData
+                        }));
+                        console.log('MQTT Bridge: Screenshot sent to server');
+                    }
+                } catch (e) {
+                    console.error('MQTT Bridge: Error taking screenshot:', e);
                 }
             }
 

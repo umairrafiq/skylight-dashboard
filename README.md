@@ -24,6 +24,10 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - **Notifications Center** - Unified notification panel in sidebar
 - **Mail & Packages** - USPS, Amazon, FedEx, UPS tracking from Informed Delivery
 - **HA Notifications** - Shows and dismisses Home Assistant persistent notifications
+- **Screenshot Capture** - Take screenshots via Home Assistant (MQTT camera entity)
+- **Scroll Preservation** - Week/day views maintain scroll position during auto-refresh
+- **Smart Screensaver** - Background refreshes don't wake the screensaver
+- **Smooth Transitions** - Preloaded images with seamless crossfade in screensaver
 
 ## Screenshots
 
@@ -184,6 +188,8 @@ When connected, these entities appear automatically in Home Assistant:
 | `sensor.skylight_living_tab` | Sensor | Current tab |
 | `number.skylight_living_volume` | Number | Volume (0-100%) |
 | `binary_sensor.skylight_living_camera` | Binary Sensor | Camera overlay active |
+| `camera.skylight_living_screenshot` | Camera | Latest dashboard screenshot |
+| `button.skylight_living_take_screenshot` | Button | Capture new screenshot |
 
 #### MQTT Commands
 
@@ -200,6 +206,10 @@ Publish to topic: `skylight/{device_id}/command`
 | Set volume | `{"command": "volume", "value": 80}` | Set volume (0-100) |
 | Set brightness | `{"command": "brightness", "value": 200}` | Set screen brightness (0-255) |
 | Reload | `{"command": "reload"}` | Refresh the dashboard |
+
+You can also take screenshots by publishing to: `skylight/{device_id}/screenshot/take`
+
+Or use the button entity: `button.skylight_{device_id}_take_screenshot`
 
 #### Home Assistant Automation Examples
 
@@ -250,6 +260,42 @@ automation:
         data:
           topic: "skylight/skylight_living/command"
           payload: '{"command": "speak", "message": "Front door is open!", "alarm": true}'
+```
+
+### Screenshot Capture
+
+Take screenshots of the dashboard remotely via Home Assistant or HTTP API.
+
+#### How It Works
+1. Screenshot request is sent via MQTT or HTTP
+2. Browser captures the page using html2canvas
+3. Image is published to MQTT camera topic
+4. Screenshot is also available via HTTP API
+
+#### Home Assistant Entities
+- **Camera**: `camera.skylight_{device_id}_screenshot` - Shows the latest screenshot
+- **Button**: `button.skylight_{device_id}_take_screenshot` - Triggers a new capture
+
+#### HTTP API
+```bash
+# Get latest screenshot (PNG)
+curl http://localhost:8765/api/screenshot -o screenshot.png
+
+# Request new screenshot
+curl http://localhost:8765/api/screenshot/take
+```
+
+#### Automation Example
+```yaml
+automation:
+  - alias: "Daily Dashboard Screenshot"
+    trigger:
+      - platform: time
+        at: "08:00:00"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.skylight_living_take_screenshot
 ```
 
 ### Notifications Center

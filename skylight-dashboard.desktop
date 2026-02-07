@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=Skylight Dashboard
 Comment=Home Assistant Dashboard for Calendar, Tasks, and Weather
-Exec=/home/umair/homeassistant/skylight-dashboard.sh
-Icon=/home/umair/homeassistant/skylight-dashboard.svg
+Exec=/home/umair/skylight-dashboard/skylight-dashboard.sh
+Icon=/home/umair/skylight-dashboard/skylight-dashboard.svg
 Terminal=false
 Type=Application
 Categories=Utility;Network;
