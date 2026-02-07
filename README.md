@@ -12,6 +12,8 @@ A beautiful, wall-mounted dashboard for Home Assistant featuring calendars, todo
 - **Weather Display** - Current conditions, high/low, humidity
 - **Sunrise/Sunset** - Daily sun times
 - **Prayer Times** - Islamic prayer times with alerts
+- **Quran Player** - Play surahs with Arabic text, translation display, and English audio
+- **Screensaver Ayah** - Ayah of the Day overlay on screensaver with adaptive contrast
 - **Event Alerts** - Soothing chime with gradual volume increase
 - **Text-to-Speech** - Announces events via Home Assistant Piper
 - **Auto Theme** - Switches between dark/light based on sunrise/sunset
@@ -171,6 +173,45 @@ sudo mount -t cifs //your-nas/photos /mnt/synology -o username=user,password=pas
 - Optional TTS announcement ("It's X o'clock")
 - Configurable hours (default: 6 AM to 10 PM)
 - Enable/disable in screensaver settings
+
+### Quran Menu
+
+Enable the Quran menu in settings to access Islamic content:
+
+#### Features
+- **Ayah of the Day** - Daily verse with Arabic text and English translation
+- **Quick Play Surahs** - Al-Fatiha, Ya-Sin, Ar-Rahman, Al-Mulk, Al-Kahf, Al-Ikhlas
+- **Ayat ul-Kursi** - Quick access to the Throne Verse (2:255)
+- **Three Quls** - Play Al-Ikhlas, Al-Falaq, and An-Nas together
+- **All Surahs** - Dropdown to select any of the 114 surahs
+
+#### Now Playing Display
+When a surah is playing, a "Now Playing" card appears showing:
+- Current surah name and translation
+- Arabic text of the current ayah (RTL, Arabic font)
+- English translation
+- Progress indicator (e.g., "Ayah 3/7")
+- Playback controls (previous, play/pause, next, stop)
+- Toggle for English translation audio
+
+#### Translation Audio
+- Plays English audio after each Arabic ayah (using Ibrahim Walk recitation)
+- Falls back to browser TTS if audio unavailable
+- Can be toggled on/off during playback
+
+#### Screensaver Ayah Overlay
+When enabled, the Ayah of the Day appears on the screensaver:
+- Positioned at bottom center (between photo date and controls)
+- Shows Arabic text, English translation, and surah reference
+- **Adaptive contrast**: Automatically switches between light/dark text based on photo brightness
+- Transparent background with blur effect
+
+#### Required Home Assistant Sensors
+```yaml
+sensor.quran_daily_ayah          # Translation text + attributes
+sensor.quran_daily_ayah_arabic   # Arabic text
+sensor.quran_daily_ayah_audio    # Audio URL (optional)
+```
 
 ### MQTT Integration
 

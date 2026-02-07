@@ -453,6 +453,56 @@
             border-radius: 8px !important;
         }
 
+        /* Screensaver Ayah Overlay */
+        .screensaver-ayah {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 60%;
+            text-align: center;
+            z-index: 5;
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(8px);
+            transition: all 0.5s ease;
+        }
+
+        .screensaver-ayah.overlay-light {
+            color: white !important;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7) !important;
+            background: rgba(0, 0, 0, 0.25) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .screensaver-ayah.overlay-dark {
+            color: #1e293b !important;
+            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.9), 0 0 20px rgba(255, 255, 255, 0.7) !important;
+            background: rgba(255, 255, 255, 0.25) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .screensaver-ayah .ayah-arabic {
+            font-family: 'Scheherazade New', 'Traditional Arabic', serif;
+            font-size: 1.5rem;
+            line-height: 2;
+            direction: rtl;
+            margin-bottom: 0.75rem;
+        }
+
+        .screensaver-ayah .ayah-translation {
+            font-size: 0.95rem;
+            font-style: italic;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .screensaver-ayah .ayah-reference {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+        }
+
         .screensaver-loading {
             position: absolute;
             inset: 0;
@@ -588,6 +638,13 @@
                 <div class="cal-header text-sm opacity-70 font-semibold pb-2">S</div>
                 <!-- Days will be populated by JS -->
             </div>
+        </div>
+
+        <!-- Ayah of the Day Overlay -->
+        <div id="screensaver-ayah" class="screensaver-ayah overlay-light hidden">
+            <div id="screensaver-ayah-arabic" class="ayah-arabic">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
+            <div id="screensaver-ayah-translation" class="ayah-translation">In the name of Allah, the Most Gracious, the Most Merciful.</div>
+            <div id="screensaver-ayah-reference" class="ayah-reference">Surah Al-Fatiha (1:1)</div>
         </div>
 
         <!-- Controls -->
@@ -1315,6 +1372,64 @@
                                 <span class="text-xl">▶️</span>
                                 <span>Play Ayah of the Day</span>
                             </button>
+                        </div>
+
+                        <!-- Now Playing Card (hidden by default) -->
+                        <div id="quran-now-playing" class="bg-gradient-to-br from-green-900/50 to-slate-800/50 rounded-2xl p-6 mb-6 border border-green-600/50 hidden">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl animate-pulse">🎵</span>
+                                    <h2 class="text-lg font-medium theme-text">Now Playing</h2>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span id="quran-playing-progress" class="text-sm theme-text-muted">Ayah 1/7</span>
+                                    <span id="quran-playing-mode" class="text-xs px-2 py-1 bg-green-600/30 rounded-full theme-text-muted">Arabic</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Surah Title -->
+                            <div class="text-center mb-4">
+                                <h3 id="quran-playing-surah-name" class="text-2xl font-semibold theme-text">Al-Fatiha</h3>
+                                <p id="quran-playing-surah-translation" class="text-sm theme-text-muted">The Opening</p>
+                            </div>
+                            
+                            <!-- Current Ayah Arabic -->
+                            <div id="quran-playing-arabic" class="text-3xl text-right leading-loose mb-4 p-4 bg-slate-900/50 rounded-xl theme-text" style="direction: rtl; font-family: 'Scheherazade New', 'Traditional Arabic', serif;">
+                                بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
+                            </div>
+                            
+                            <!-- Current Ayah Translation -->
+                            <div id="quran-playing-translation" class="text-lg theme-text-muted italic leading-relaxed border-l-4 border-green-600 pl-4 mb-4">
+                                In the name of Allah, the Most Gracious, the Most Merciful.
+                            </div>
+                            
+                            <!-- Playback Controls -->
+                            <div class="flex items-center justify-center gap-4 mt-4">
+                                <button onclick="quranPlayerPrev()" class="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-full transition-all" title="Previous Ayah">
+                                    <span class="text-xl">⏮️</span>
+                                </button>
+                                <button onclick="quranPlayerToggle()" id="quran-play-pause-btn" class="p-4 bg-green-600 hover:bg-green-700 rounded-full transition-all" title="Play/Pause">
+                                    <span class="text-2xl">⏸️</span>
+                                </button>
+                                <button onclick="quranPlayerNext()" class="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-full transition-all" title="Next Ayah">
+                                    <span class="text-xl">⏭️</span>
+                                </button>
+                                <button onclick="quranPlayerStop()" class="p-3 bg-red-600/50 hover:bg-red-600 rounded-full transition-all" title="Stop">
+                                    <span class="text-xl">⏹️</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Toggle translation audio -->
+                            <div class="flex items-center justify-center gap-2 mt-4">
+                                <label class="flex items-center gap-3 cursor-pointer select-none">
+                                    <div class="relative">
+                                        <input type="checkbox" id="quran-play-translation" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-600 peer-checked:bg-green-600 rounded-full transition-colors"></div>
+                                        <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                                    </div>
+                                    <span class="text-sm theme-text-muted">Play English translation audio</span>
+                                </label>
+                            </div>
                         </div>
 
                         <!-- Ayah of the Day Card -->
@@ -5103,6 +5218,7 @@
             const metadata = document.getElementById('screensaver-metadata');
             const header = document.getElementById('main-header');
             const mailNotif = document.getElementById('mail-notification');
+            const ayahOverlay = document.getElementById('screensaver-ayah');
             
             if (isLightBackground) {
                 // Light background = use dark overlay text
@@ -5114,6 +5230,8 @@
                 header?.classList.add('overlay-dark');
                 mailNotif?.classList.remove('overlay-light');
                 mailNotif?.classList.add('overlay-dark');
+                ayahOverlay?.classList.remove('overlay-light');
+                ayahOverlay?.classList.add('overlay-dark');
             } else {
                 // Dark background = use light overlay text
                 calendar?.classList.remove('overlay-dark');
@@ -5124,6 +5242,8 @@
                 header?.classList.add('overlay-light');
                 mailNotif?.classList.remove('overlay-dark');
                 mailNotif?.classList.add('overlay-light');
+                ayahOverlay?.classList.remove('overlay-dark');
+                ayahOverlay?.classList.add('overlay-light');
             }
         }
 
@@ -5133,9 +5253,10 @@
             const metadata = document.getElementById('screensaver-metadata');
             const header = document.getElementById('main-header');
             const mailNotif = document.getElementById('mail-notification');
+            const ayahOverlay = document.getElementById('screensaver-ayah');
 
             // Remove all overlay classes
-            [calendar, metadata, header, mailNotif].forEach(el => {
+            [calendar, metadata, header, mailNotif, ayahOverlay].forEach(el => {
                 el?.classList.remove('overlay-light', 'overlay-dark');
             });
 
@@ -5236,6 +5357,9 @@
 
                 // Update mini calendar
                 updateMiniCalendar();
+
+                // Show Ayah of the Day if Quran is enabled
+                updateScreensaverAyah();
 
                 // Initialize provider if needed (or reinitialize if config changed)
                 if (!this.provider) {
@@ -5417,6 +5541,10 @@
                 // Hide overlay
                 this.overlay.classList.add('hidden');
 
+                // Hide screensaver ayah overlay
+                const ayahOverlay = document.getElementById('screensaver-ayah');
+                if (ayahOverlay) ayahOverlay.classList.add('hidden');
+
                 // Remove screensaver-active class from body
                 document.body.classList.remove('screensaver-active');
 
@@ -5572,6 +5700,50 @@
             }
         }
 
+        // Update Screensaver Ayah Overlay
+        async function updateScreensaverAyah() {
+            const ayahOverlay = document.getElementById('screensaver-ayah');
+            if (!ayahOverlay) return;
+
+            // Check if Quran is enabled
+            if (!quranSettings.enabled) {
+                ayahOverlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                // Fetch Ayah of the Day from Home Assistant sensors
+                const [ayahResponse, arabicResponse] = await Promise.all([
+                    fetch('/api/states/sensor.quran_daily_ayah'),
+                    fetch('/api/states/sensor.quran_daily_ayah_arabic')
+                ]);
+
+                const ayahData = await ayahResponse.json();
+                const arabicData = await arabicResponse.json();
+
+                // Update overlay content
+                const arabicEl = document.getElementById('screensaver-ayah-arabic');
+                const translationEl = document.getElementById('screensaver-ayah-translation');
+                const referenceEl = document.getElementById('screensaver-ayah-reference');
+
+                if (arabicEl) arabicEl.textContent = arabicData.state || '';
+                if (translationEl) translationEl.textContent = ayahData.attributes?.full_text || ayahData.state || '';
+                
+                const surahName = ayahData.attributes?.surah_name || 'Unknown';
+                const ayahRef = ayahData.attributes?.reference || '';
+                if (referenceEl) referenceEl.textContent = `Surah ${surahName} ${ayahRef ? '(' + ayahRef + ')' : ''}`;
+
+                // Show the overlay
+                ayahOverlay.classList.remove('hidden');
+                
+                console.log('Screensaver Ayah overlay updated');
+            } catch (e) {
+                console.error('Error loading screensaver ayah:', e);
+                // Hide on error
+                ayahOverlay.classList.add('hidden');
+            }
+        }
+
         // Surah names for selector
         const SURAH_LIST = [
             [1, "Al-Fatiha", "The Opening"], [2, "Al-Baqara", "The Cow"], [3, "Aal-i-Imran", "The Family of Imran"],
@@ -5626,6 +5798,18 @@
             });
         }
 
+        // Quran Player State
+        let quranPlayer = {
+            isPlaying: false,
+            isPaused: false,
+            currentSurah: null,
+            currentAyahIndex: 0,
+            arabicAyahs: [],
+            translationAyahs: [],
+            playingArabic: true, // true = Arabic, false = English translation
+            audio: null
+        };
+
         // Play a specific surah
         async function playQuranSurah(surahNumber) {
             try {
@@ -5636,65 +5820,426 @@
                     screensaverController.wake('quran');
                 }
 
+                // Stop any current playback
+                quranPlayerStop(true);
+
                 // Get surah info
                 const surahInfo = SURAH_LIST.find(s => s[0] === surahNumber);
                 const surahName = surahInfo ? surahInfo[1] : `Surah ${surahNumber}`;
+                const surahTranslation = surahInfo ? surahInfo[2] : '';
+
+                // Show loading state
+                const nowPlayingCard = document.getElementById('quran-now-playing');
+                nowPlayingCard.classList.remove('hidden');
+                document.getElementById('quran-playing-surah-name').textContent = surahName;
+                document.getElementById('quran-playing-surah-translation').textContent = surahTranslation;
+                document.getElementById('quran-playing-arabic').textContent = 'Loading...';
+                document.getElementById('quran-playing-translation').textContent = 'Loading surah...';
+                document.getElementById('quran-playing-progress').textContent = 'Loading...';
 
                 // Announce
                 speakText(`Playing ${surahName}`);
 
-                // Play first ayah audio (we'd need the API to get all ayahs)
-                // For now, use the AlQuran.cloud API directly
-                setTimeout(async () => {
-                    const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}/${quranSettings.reciter}`);
-                    const data = await response.json();
-                    
-                    if (data.data?.ayahs?.length > 0) {
-                        const audioUrl = data.data.ayahs[0].audio;
-                        if (audioUrl) {
-                            if (currentTTSAudio) {
-                                currentTTSAudio.pause();
-                                currentTTSAudio = null;
-                            }
-                            currentTTSAudio = new Audio(audioUrl);
-                            currentTTSAudio.volume = alarmVolume;
-                            currentTTSAudio.play().catch(e => console.error('Error playing:', e));
-                        }
-                    }
-                }, 2000);
+                // Fetch Arabic audio and English translation in parallel
+                const [arabicResponse, translationResponse] = await Promise.all([
+                    fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}/${quranSettings.reciter}`),
+                    fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}/en.sahih`)
+                ]);
+
+                const arabicData = await arabicResponse.json();
+                const translationData = await translationResponse.json();
+
+                if (!arabicData.data?.ayahs?.length) {
+                    console.error('No ayahs found');
+                    return;
+                }
+
+                // Store player state
+                quranPlayer.currentSurah = surahNumber;
+                quranPlayer.arabicAyahs = arabicData.data.ayahs;
+                quranPlayer.translationAyahs = translationData.data?.ayahs || [];
+                quranPlayer.currentAyahIndex = 0;
+                quranPlayer.isPlaying = true;
+                quranPlayer.isPaused = false;
+                quranPlayer.playingArabic = true;
+
+                // Start playback after announcement
+                setTimeout(() => {
+                    playCurrentAyah();
+                }, 2500);
+
             } catch (e) {
                 console.error('Error playing surah:', e);
+                quranPlayerStop();
+            }
+        }
+
+        // Play current ayah (Arabic or Translation based on state)
+        function playCurrentAyah() {
+            if (!quranPlayer.isPlaying || quranPlayer.currentAyahIndex >= quranPlayer.arabicAyahs.length) {
+                quranPlayerStop();
+                return;
+            }
+
+            const ayah = quranPlayer.arabicAyahs[quranPlayer.currentAyahIndex];
+            const translation = quranPlayer.translationAyahs[quranPlayer.currentAyahIndex];
+            const totalAyahs = quranPlayer.arabicAyahs.length;
+            const playTranslation = document.getElementById('quran-play-translation')?.checked ?? true;
+
+            // Update surah header if needed (for multi-surah playback like 3 Quls)
+            if (ayah.surah) {
+                const surahInfo = SURAH_LIST.find(s => s[0] === ayah.surah.number);
+                if (surahInfo) {
+                    document.getElementById('quran-playing-surah-name').textContent = surahInfo[1];
+                    document.getElementById('quran-playing-surah-translation').textContent = surahInfo[2];
+                }
+            }
+
+            // Update UI
+            document.getElementById('quran-playing-arabic').textContent = ayah.text;
+            document.getElementById('quran-playing-translation').textContent = translation?.text || '';
+            document.getElementById('quran-playing-progress').textContent = `Ayah ${quranPlayer.currentAyahIndex + 1}/${totalAyahs}`;
+            document.getElementById('quran-playing-mode').textContent = quranPlayer.playingArabic ? 'Arabic' : 'English';
+            document.getElementById('quran-playing-mode').className = quranPlayer.playingArabic 
+                ? 'text-xs px-2 py-1 bg-green-600/30 rounded-full theme-text-muted'
+                : 'text-xs px-2 py-1 bg-blue-600/30 rounded-full theme-text-muted';
+
+            // Determine which audio to play
+            let audioUrl;
+            if (quranPlayer.playingArabic) {
+                audioUrl = ayah.audio;
+            } else {
+                // For English translation audio, we use the Ibrahim Walk edition
+                // The API structure for translation audio might differ
+                audioUrl = null; // Will fetch separately
+            }
+
+            // Stop previous audio
+            if (quranPlayer.audio) {
+                quranPlayer.audio.pause();
+                quranPlayer.audio = null;
+            }
+
+            if (quranPlayer.playingArabic && audioUrl) {
+                // Play Arabic audio
+                quranPlayer.audio = new Audio(audioUrl);
+                quranPlayer.audio.volume = alarmVolume;
+                quranPlayer.audio.onended = () => {
+                    if (playTranslation) {
+                        // Switch to translation
+                        quranPlayer.playingArabic = false;
+                        playTranslationAudio();
+                    } else {
+                        // Move to next ayah
+                        quranPlayer.currentAyahIndex++;
+                        quranPlayer.playingArabic = true;
+                        playCurrentAyah();
+                    }
+                };
+                quranPlayer.audio.play().catch(e => console.error('Error playing Arabic:', e));
+            } else if (!quranPlayer.playingArabic) {
+                playTranslationAudio();
+            }
+        }
+
+        // Play translation audio using TTS or translation audio edition
+        async function playTranslationAudio() {
+            const translation = quranPlayer.translationAyahs[quranPlayer.currentAyahIndex];
+            if (!translation?.text) {
+                // Skip to next ayah
+                quranPlayer.currentAyahIndex++;
+                quranPlayer.playingArabic = true;
+                playCurrentAyah();
+                return;
+            }
+
+            // Update UI to show we're playing translation
+            document.getElementById('quran-playing-mode').textContent = 'English';
+            document.getElementById('quran-playing-mode').className = 'text-xs px-2 py-1 bg-blue-600/30 rounded-full theme-text-muted';
+
+            try {
+                // Try to fetch English audio from the Walk edition (has audio)
+                const ayahNumber = quranPlayer.arabicAyahs[quranPlayer.currentAyahIndex].number;
+                const response = await fetch(`https://api.alquran.cloud/v1/ayah/${ayahNumber}/en.walk`);
+                const data = await response.json();
+                
+                if (data.data?.audio) {
+                    quranPlayer.audio = new Audio(data.data.audio);
+                    quranPlayer.audio.volume = alarmVolume;
+                    quranPlayer.audio.onended = () => {
+                        // Move to next ayah
+                        quranPlayer.currentAyahIndex++;
+                        quranPlayer.playingArabic = true;
+                        playCurrentAyah();
+                    };
+                    quranPlayer.audio.play().catch(e => {
+                        console.error('Error playing translation audio:', e);
+                        // Fallback to TTS
+                        playTranslationTTS(translation.text);
+                    });
+                } else {
+                    // Fallback to TTS
+                    playTranslationTTS(translation.text);
+                }
+            } catch (e) {
+                console.error('Error fetching translation audio:', e);
+                // Fallback to TTS
+                playTranslationTTS(translation.text);
+            }
+        }
+
+        // Fallback: Play translation using browser TTS
+        function playTranslationTTS(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.onend = () => {
+                    // Move to next ayah
+                    quranPlayer.currentAyahIndex++;
+                    quranPlayer.playingArabic = true;
+                    playCurrentAyah();
+                };
+                speechSynthesis.speak(utterance);
+            } else {
+                // No TTS available, just move on
+                setTimeout(() => {
+                    quranPlayer.currentAyahIndex++;
+                    quranPlayer.playingArabic = true;
+                    playCurrentAyah();
+                }, 2000);
+            }
+        }
+
+        // Player controls
+        function quranPlayerToggle() {
+            if (!quranPlayer.isPlaying) return;
+
+            const btn = document.getElementById('quran-play-pause-btn');
+            
+            if (quranPlayer.isPaused) {
+                // Resume
+                quranPlayer.isPaused = false;
+                btn.innerHTML = '<span class="text-2xl">⏸️</span>';
+                if (quranPlayer.audio) {
+                    quranPlayer.audio.play();
+                } else if ('speechSynthesis' in window) {
+                    speechSynthesis.resume();
+                }
+            } else {
+                // Pause
+                quranPlayer.isPaused = true;
+                btn.innerHTML = '<span class="text-2xl">▶️</span>';
+                if (quranPlayer.audio) {
+                    quranPlayer.audio.pause();
+                } else if ('speechSynthesis' in window) {
+                    speechSynthesis.pause();
+                }
+            }
+        }
+
+        function quranPlayerNext() {
+            if (!quranPlayer.isPlaying) return;
+            
+            // Stop current audio
+            if (quranPlayer.audio) {
+                quranPlayer.audio.pause();
+                quranPlayer.audio = null;
+            }
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+            }
+
+            // Move to next ayah
+            quranPlayer.currentAyahIndex++;
+            quranPlayer.playingArabic = true;
+            quranPlayer.isPaused = false;
+            document.getElementById('quran-play-pause-btn').innerHTML = '<span class="text-2xl">⏸️</span>';
+            playCurrentAyah();
+        }
+
+        function quranPlayerPrev() {
+            if (!quranPlayer.isPlaying) return;
+            
+            // Stop current audio
+            if (quranPlayer.audio) {
+                quranPlayer.audio.pause();
+                quranPlayer.audio = null;
+            }
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+            }
+
+            // Move to previous ayah (minimum 0)
+            quranPlayer.currentAyahIndex = Math.max(0, quranPlayer.currentAyahIndex - 1);
+            quranPlayer.playingArabic = true;
+            quranPlayer.isPaused = false;
+            document.getElementById('quran-play-pause-btn').innerHTML = '<span class="text-2xl">⏸️</span>';
+            playCurrentAyah();
+        }
+
+        function quranPlayerStop(silent = false) {
+            // Stop audio
+            if (quranPlayer.audio) {
+                quranPlayer.audio.pause();
+                quranPlayer.audio = null;
+            }
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+            }
+            if (currentTTSAudio) {
+                currentTTSAudio.pause();
+                currentTTSAudio = null;
+            }
+
+            // Reset state
+            quranPlayer.isPlaying = false;
+            quranPlayer.isPaused = false;
+            quranPlayer.currentAyahIndex = 0;
+            quranPlayer.playingArabic = true;
+
+            // Hide now playing card
+            if (!silent) {
+                const nowPlayingCard = document.getElementById('quran-now-playing');
+                if (nowPlayingCard) {
+                    nowPlayingCard.classList.add('hidden');
+                }
+            }
+
+            // Reset play button
+            const btn = document.getElementById('quran-play-pause-btn');
+            if (btn) {
+                btn.innerHTML = '<span class="text-2xl">⏸️</span>';
             }
         }
 
         // Play Ayat ul-Kursi (2:255)
         async function playQuranAyatUlKursi() {
             try {
-                speakText('Playing Ayat ul-Kursi');
+                console.log('Playing Ayat ul-Kursi...');
                 
-                setTimeout(async () => {
-                    const response = await fetch(`https://api.alquran.cloud/v1/ayah/262/${quranSettings.reciter}`);
-                    const data = await response.json();
-                    
-                    if (data.data?.audio) {
-                        if (currentTTSAudio) {
-                            currentTTSAudio.pause();
-                            currentTTSAudio = null;
-                        }
-                        currentTTSAudio = new Audio(data.data.audio);
-                        currentTTSAudio.volume = alarmVolume;
-                        currentTTSAudio.play().catch(e => console.error('Error playing:', e));
-                    }
-                }, 2000);
+                // Wake screensaver
+                if (screensaverController?.isActive) {
+                    screensaverController.wake('quran');
+                }
+
+                // Stop any current playback
+                quranPlayerStop(true);
+
+                // Show loading state
+                const nowPlayingCard = document.getElementById('quran-now-playing');
+                nowPlayingCard.classList.remove('hidden');
+                document.getElementById('quran-playing-surah-name').textContent = 'Ayat ul-Kursi';
+                document.getElementById('quran-playing-surah-translation').textContent = 'The Throne Verse (2:255)';
+                document.getElementById('quran-playing-arabic').textContent = 'Loading...';
+                document.getElementById('quran-playing-translation').textContent = 'Loading...';
+                document.getElementById('quran-playing-progress').textContent = 'Ayah 1/1';
+
+                speakText('Playing Ayat ul-Kursi');
+
+                // Fetch Arabic audio and English translation
+                const [arabicResponse, translationResponse] = await Promise.all([
+                    fetch(`https://api.alquran.cloud/v1/ayah/262/${quranSettings.reciter}`),
+                    fetch(`https://api.alquran.cloud/v1/ayah/262/en.sahih`)
+                ]);
+
+                const arabicData = await arabicResponse.json();
+                const translationData = await translationResponse.json();
+
+                if (!arabicData.data) {
+                    console.error('No ayah data found');
+                    return;
+                }
+
+                // Store player state (single ayah)
+                quranPlayer.currentSurah = 2;
+                quranPlayer.arabicAyahs = [arabicData.data];
+                quranPlayer.translationAyahs = [translationData.data];
+                quranPlayer.currentAyahIndex = 0;
+                quranPlayer.isPlaying = true;
+                quranPlayer.isPaused = false;
+                quranPlayer.playingArabic = true;
+
+                // Start playback after announcement
+                setTimeout(() => {
+                    playCurrentAyah();
+                }, 2500);
+
             } catch (e) {
                 console.error('Error playing Ayat ul-Kursi:', e);
+                quranPlayerStop();
             }
         }
 
-        // Play last 3 surahs (112, 113, 114)
+        // Play last 3 surahs (112, 113, 114) sequentially
+        let threeQulsQueue = [];
         async function playQuranLastThree() {
+            console.log('Playing the three Quls...');
+            
+            // Wake screensaver
+            if (screensaverController?.isActive) {
+                screensaverController.wake('quran');
+            }
+
+            // Stop any current playback
+            quranPlayerStop(true);
+
+            // Show loading state
+            const nowPlayingCard = document.getElementById('quran-now-playing');
+            nowPlayingCard.classList.remove('hidden');
+            document.getElementById('quran-playing-surah-name').textContent = 'Three Quls';
+            document.getElementById('quran-playing-surah-translation').textContent = 'Al-Ikhlas, Al-Falaq, An-Nas';
+            document.getElementById('quran-playing-arabic').textContent = 'Loading...';
+            document.getElementById('quran-playing-translation').textContent = 'Loading all three surahs...';
+            document.getElementById('quran-playing-progress').textContent = 'Loading...';
+
             speakText('Playing the three Quls: Al-Ikhlas, Al-Falaq, and An-Nas');
-            setTimeout(() => playQuranSurah(112), 2000);
+
+            try {
+                // Fetch all three surahs
+                const [arabic112, arabic113, arabic114, trans112, trans113, trans114] = await Promise.all([
+                    fetch(`https://api.alquran.cloud/v1/surah/112/${quranSettings.reciter}`).then(r => r.json()),
+                    fetch(`https://api.alquran.cloud/v1/surah/113/${quranSettings.reciter}`).then(r => r.json()),
+                    fetch(`https://api.alquran.cloud/v1/surah/114/${quranSettings.reciter}`).then(r => r.json()),
+                    fetch(`https://api.alquran.cloud/v1/surah/112/en.sahih`).then(r => r.json()),
+                    fetch(`https://api.alquran.cloud/v1/surah/113/en.sahih`).then(r => r.json()),
+                    fetch(`https://api.alquran.cloud/v1/surah/114/en.sahih`).then(r => r.json())
+                ]);
+
+                // Combine all ayahs
+                const allArabicAyahs = [
+                    ...arabic112.data.ayahs,
+                    ...arabic113.data.ayahs,
+                    ...arabic114.data.ayahs
+                ];
+                const allTranslationAyahs = [
+                    ...trans112.data.ayahs,
+                    ...trans113.data.ayahs,
+                    ...trans114.data.ayahs
+                ];
+
+                // Store player state
+                quranPlayer.currentSurah = '112-114';
+                quranPlayer.arabicAyahs = allArabicAyahs;
+                quranPlayer.translationAyahs = allTranslationAyahs;
+                quranPlayer.currentAyahIndex = 0;
+                quranPlayer.isPlaying = true;
+                quranPlayer.isPaused = false;
+                quranPlayer.playingArabic = true;
+
+                // Update header
+                document.getElementById('quran-playing-surah-name').textContent = 'Al-Ikhlas';
+                document.getElementById('quran-playing-surah-translation').textContent = 'The Sincerity';
+
+                // Start playback after announcement
+                setTimeout(() => {
+                    playCurrentAyah();
+                }, 2500);
+
+            } catch (e) {
+                console.error('Error playing three Quls:', e);
+                quranPlayerStop();
+            }
         }
 
         // Play selected surah from dropdown
