@@ -47,6 +47,26 @@
             color: var(--text-secondary);
         }
 
+        /* Prayer times styling */
+        .prayer-box {
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+        .prayer-box.next-prayer {
+            opacity: 1;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+        .prayer-box.next-prayer .text-xs {
+            font-weight: 600;
+        }
+        .prayer-box.passed {
+            opacity: 0.35;
+            text-decoration: line-through;
+        }
+
         .sidebar-btn { transition: all 0.3s ease; }
         .view-btn { transition: all 0.3s ease; }
         .day-cell { transition: all 0.2s ease; }
@@ -1102,14 +1122,27 @@
 
                 <!-- Prayer Times -->
                 <div class="flex items-center gap-3 pl-6 border-l border-slate-700/50">
-                    <div class="flex items-center gap-2">
-                        <span class="text-lg">🕌</span>
-                        <div>
-                            <div class="text-[10px] theme-text-muted uppercase">Next Prayer</div>
-                            <div class="flex items-baseline gap-2">
-                                <span id="next-prayer-name" class="text-sm font-medium theme-text">--</span>
-                                <span id="next-prayer-time" class="text-xs theme-text-muted">--:--</span>
-                            </div>
+                    <span class="text-lg">🕌</span>
+                    <div class="flex items-center gap-4">
+                        <div id="prayer-fajr-box" class="text-center prayer-box">
+                            <div class="text-[10px] theme-text-muted uppercase">Fajr</div>
+                            <div id="prayer-fajr" class="text-xs theme-text">--:--</div>
+                        </div>
+                        <div id="prayer-dhuhr-box" class="text-center prayer-box">
+                            <div class="text-[10px] theme-text-muted uppercase">Dhuhr</div>
+                            <div id="prayer-dhuhr" class="text-xs theme-text">--:--</div>
+                        </div>
+                        <div id="prayer-asr-box" class="text-center prayer-box">
+                            <div class="text-[10px] theme-text-muted uppercase">Asr</div>
+                            <div id="prayer-asr" class="text-xs theme-text">--:--</div>
+                        </div>
+                        <div id="prayer-maghrib-box" class="text-center prayer-box">
+                            <div class="text-[10px] theme-text-muted uppercase">Maghrib</div>
+                            <div id="prayer-maghrib" class="text-xs theme-text">--:--</div>
+                        </div>
+                        <div id="prayer-isha-box" class="text-center prayer-box">
+                            <div class="text-[10px] theme-text-muted uppercase">Isha</div>
+                            <div id="prayer-isha" class="text-xs theme-text">--:--</div>
                         </div>
                     </div>
                 </div>
@@ -2453,33 +2486,38 @@
                     }
                 }
 
-                // Calculate and display next prayer
+                // Highlight next prayer and mark passed prayers
                 const now = new Date();
-                const prayerNames = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+                const prayerOrder = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
                 let nextPrayer = null;
-                let nextPrayerTime = null;
 
-                for (const [prayer, time] of Object.entries(prayerTimes)) {
-                    if (time > now) {
-                        if (!nextPrayerTime || time < nextPrayerTime) {
-                            nextPrayer = prayer;
-                            nextPrayerTime = time;
+                // Find the next upcoming prayer
+                for (const prayer of prayerOrder) {
+                    if (prayerTimes[prayer] && prayerTimes[prayer] > now) {
+                        nextPrayer = prayer;
+                        break;
+                    }
+                }
+
+                // Update prayer box styles
+                for (const prayer of prayerOrder) {
+                    const box = document.getElementById(`prayer-${prayer}-box`);
+                    if (box) {
+                        box.classList.remove('next-prayer', 'passed');
+                        if (prayer === nextPrayer) {
+                            box.classList.add('next-prayer');
+                        } else if (prayerTimes[prayer] && prayerTimes[prayer] <= now) {
+                            box.classList.add('passed');
                         }
                     }
                 }
 
-                const nextPrayerNameEl = document.getElementById('next-prayer-name');
-                const nextPrayerTimeEl = document.getElementById('next-prayer-time');
-                if (nextPrayerNameEl && nextPrayerTimeEl) {
-                    if (nextPrayer && nextPrayerTime) {
-                        nextPrayerNameEl.textContent = prayerNames[nextPrayer];
-                        nextPrayerTimeEl.textContent = nextPrayerTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                    } else {
-                        // All prayers passed for today, show Fajr (tomorrow)
-                        nextPrayerNameEl.textContent = 'Fajr';
-                        nextPrayerTimeEl.textContent = prayerTimes.fajr 
-                            ? prayerTimes.fajr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' ⁺¹'
-                            : '--:--';
+                // If all prayers passed, highlight Fajr as next (for tomorrow)
+                if (!nextPrayer) {
+                    const fajrBox = document.getElementById('prayer-fajr-box');
+                    if (fajrBox) {
+                        fajrBox.classList.remove('passed');
+                        fajrBox.classList.add('next-prayer');
                     }
                 }
             } catch (e) {
