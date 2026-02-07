@@ -1175,6 +1175,9 @@
                 <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M21.8,13H20V21H4V13H2.2C1.76,13 1.44,12.5 1.68,12.13L11.5,1.54C11.72,1.28 12.28,1.28 12.5,1.54L22.32,12.13C22.56,12.5 22.24,13 21.8,13M7,10V12H9V10H7M11,10V12H13V10H11M15,10V12H17V10H15M7,14V16H9V14H7M11,14V16H13V14H11M15,14V16H17V14H15M7,18V20H9V18H7M11,18V20H13V18H11M15,18V20H17V18H15Z"/></svg>
             </button>
 
+            <button onclick="playQuranAyah()" id="btn-quran" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white" title="Play Quran Daily Ayah">
+                <span class="text-2xl">🕌</span>
+            </button>
             <button onclick="toggleNotificationsPanel()" id="btn-mail" class="sidebar-btn w-14 h-14 flex items-center justify-center bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white relative" title="Mail & Packages">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                 <span id="mail-badge" class="mail-badge hidden">0</span>
@@ -5286,6 +5289,69 @@
             }
         }
 
+        // Play Quran Daily Ayah
+        async function playQuranAyah() {
+            try {
+                console.log('Playing Quran daily ayah...');
+                
+                // Wake screensaver if active
+                if (screensaverController?.isActive) {
+                    screensaverController.wake('quran');
+                }
+
+                // Visual feedback - highlight button briefly
+                const btn = document.getElementById('btn-quran');
+                if (btn) {
+                    btn.classList.add('bg-green-600');
+                    setTimeout(() => btn.classList.remove('bg-green-600'), 2000);
+                }
+
+                // Fetch ayah data from HA sensors
+                const [ayahResponse, audioResponse] = await Promise.all([
+                    fetch('/api/states/sensor.quran_daily_ayah'),
+                    fetch('/api/states/sensor.quran_daily_ayah_audio')
+                ]);
+
+                const ayahData = await ayahResponse.json();
+                const audioData = await audioResponse.json();
+
+                const surahName = ayahData.attributes?.surah_name || 'Unknown';
+                const verseNum = ayahData.attributes?.ayah_in_surah || '?';
+                const translation = ayahData.attributes?.full_text || ayahData.state || '';
+                const audioUrl = audioData.state;
+
+                // 1. Announce surah name
+                const introText = `Ayah of the day from Surah ${surahName}, verse ${verseNum}`;
+                speakText(introText);
+
+                // 2. Play Arabic recitation after intro (4 seconds)
+                setTimeout(() => {
+                    if (audioUrl && audioUrl.startsWith('http')) {
+                        // Stop any existing audio
+                        if (currentTTSAudio) {
+                            currentTTSAudio.pause();
+                            currentTTSAudio = null;
+                        }
+
+                        currentTTSAudio = new Audio(audioUrl);
+                        currentTTSAudio.volume = alarmVolume;
+                        currentTTSAudio.play().catch(e => console.error('Error playing audio:', e));
+
+                        // 3. Speak translation after audio ends
+                        currentTTSAudio.onended = () => {
+                            currentTTSAudio = null;
+                            if (translation) {
+                                setTimeout(() => speakText(translation), 1000);
+                            }
+                        };
+                    }
+                }, 4000);
+
+            } catch (e) {
+                console.error('Error playing Quran ayah:', e);
+            }
+        }
+
         // Settings Modal Functions
         function openScreensaverSettings() {
             // Wake screensaver if active
@@ -5548,6 +5614,18 @@
                             }
                             break;
 
+                        case 'play_audio':
+                            // Play audio URL directly on the dashboard
+                            if (cmd.url) {
+                                this.playAudioUrl(cmd.url, cmd.volume);
+                            }
+                            break;
+
+                        case 'play_quran':
+                            // Play Quran daily ayah (fetches from HA sensor)
+                            this.playQuranDailyAyah(cmd);
+                            break;
+
                         default:
                             console.log('MQTT Bridge: Unknown command:', command);
                     }
@@ -5728,6 +5806,91 @@
                     }
                 } catch (e) {
                     console.error('MQTT Bridge: Error playing alarm:', e);
+                }
+            }
+
+            // Play any audio URL on the dashboard speaker
+            playAudioUrl(url, volume) {
+                try {
+                    console.log('MQTT Bridge: Playing audio:', url);
+                    
+                    // Wake screensaver first
+                    if (screensaverController?.isActive) {
+                        screensaverController.wake('mqtt');
+                    }
+
+                    // Set volume if specified
+                    if (typeof volume === 'number') {
+                        setAlarmVolume(Math.max(0, Math.min(100, volume)));
+                    }
+
+                    // Stop any current audio
+                    if (currentTTSAudio) {
+                        currentTTSAudio.pause();
+                        currentTTSAudio = null;
+                    }
+
+                    // Play the audio
+                    currentTTSAudio = new Audio(url);
+                    currentTTSAudio.volume = alarmVolume;
+                    currentTTSAudio.play().catch(e => {
+                        console.error('MQTT Bridge: Error playing audio:', e);
+                    });
+
+                    currentTTSAudio.onended = () => {
+                        currentTTSAudio = null;
+                    };
+                } catch (e) {
+                    console.error('MQTT Bridge: Error in playAudioUrl:', e);
+                }
+            }
+
+            // Play Quran daily ayah with intro, Arabic recitation, and translation
+            async playQuranDailyAyah(cmd) {
+                try {
+                    console.log('MQTT Bridge: Playing Quran daily ayah');
+                    
+                    // Wake screensaver first
+                    if (screensaverController?.isActive) {
+                        screensaverController.wake('mqtt');
+                    }
+
+                    // Fetch ayah data from HA sensors
+                    const [ayahResponse, audioResponse, arabicResponse] = await Promise.all([
+                        fetch('/api/states/sensor.quran_daily_ayah'),
+                        fetch('/api/states/sensor.quran_daily_ayah_audio'),
+                        fetch('/api/states/sensor.quran_daily_ayah_arabic')
+                    ]);
+
+                    const ayahData = await ayahResponse.json();
+                    const audioData = await audioResponse.json();
+                    const arabicData = await arabicResponse.json();
+
+                    const surahName = ayahData.attributes?.surah_name || 'Unknown';
+                    const verseNum = ayahData.attributes?.ayah_in_surah || '?';
+                    const translation = ayahData.attributes?.full_text || ayahData.state || '';
+                    const audioUrl = audioData.state;
+
+                    // 1. Announce surah name
+                    const introText = `Ayah of the day from Surah ${surahName}, verse ${verseNum}`;
+                    speakText(introText);
+
+                    // 2. Play Arabic recitation after intro
+                    setTimeout(() => {
+                        if (audioUrl && audioUrl.startsWith('http')) {
+                            this.playAudioUrl(audioUrl);
+                            
+                            // 3. Speak translation after audio (estimate 15 seconds)
+                            if (cmd.includeTranslation !== false && translation) {
+                                setTimeout(() => {
+                                    speakText(translation);
+                                }, 15000);
+                            }
+                        }
+                    }, 4000);
+
+                } catch (e) {
+                    console.error('MQTT Bridge: Error playing Quran ayah:', e);
                 }
             }
 
