@@ -299,10 +299,10 @@
         .screensaver-active .main-header {
             position: fixed !important;
             top: 0;
-            left: 5rem;
+            left: 0;
             right: 0;
             z-index: 50 !important;
-            padding: 1rem 1.5rem !important;
+            padding: 1.5rem !important;
             pointer-events: none;
             transition: all 0.5s ease;
         }
@@ -1063,9 +1063,69 @@
     </div>
 
     <!-- Main Layout -->
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex flex-col h-screen overflow-hidden">
+        <!-- Full-Width Header -->
+        <div id="main-header" class="main-header flex justify-between items-center px-6 pt-6 pb-4 flex-shrink-0">
+            <div class="flex items-center gap-8">
+                <!-- Weather -->
+                <div class="flex items-center gap-3">
+                    <div id="weather-icon" class="text-5xl">🌡️</div>
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span id="weather-temp" class="text-3xl font-light theme-text">--°</span>
+                            <span id="weather-condition" class="text-sm theme-text-muted">Loading...</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs theme-text-muted mt-1">
+                            <span id="weather-hilo">H: --° L: --°</span>
+                            <span id="weather-extra"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sunrise/Sunset -->
+                <div class="flex items-center gap-4 pl-6 border-l border-slate-700/50">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🌅</span>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Sunrise</div>
+                            <div id="sunrise-time" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🌇</span>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Sunset</div>
+                            <div id="sunset-time" class="text-sm font-medium theme-text">--:--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prayer Times -->
+                <div class="flex items-center gap-3 pl-6 border-l border-slate-700/50">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🕌</span>
+                        <div>
+                            <div class="text-[10px] theme-text-muted uppercase">Next Prayer</div>
+                            <div class="flex items-baseline gap-2">
+                                <span id="next-prayer-name" class="text-sm font-medium theme-text">--</span>
+                                <span id="next-prayer-time" class="text-xs theme-text-muted">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time -->
+            <div class="text-right">
+                <div id="current-time" class="text-5xl font-light theme-text tracking-tight">--:--</div>
+                <div id="current-date" class="theme-text-muted text-sm mt-1">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Content Area with Sidebar -->
+        <div class="flex flex-1 overflow-hidden">
         <!-- Left Sidebar -->
-        <div id="sidebar" class="w-20 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 flex flex-col items-center py-8 gap-2 theme-transition">
+        <div id="sidebar" class="w-20 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 flex flex-col items-center py-4 gap-2 theme-transition">
             <div class="w-12 h-12 bg-indigo-600 flex items-center justify-center mb-8">
                 <span class="text-white font-bold text-xl">S</span>
             </div>
@@ -1116,78 +1176,7 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col p-6 h-full overflow-hidden">
-            <!-- Weather and Time Header -->
-            <div id="main-header" class="main-header flex justify-between items-center mb-4 flex-shrink-0">
-                <div class="flex items-center gap-8">
-                    <!-- Weather -->
-                    <div class="flex items-center gap-3">
-                        <div id="weather-icon" class="text-5xl">🌡️</div>
-                        <div>
-                            <div class="flex items-baseline gap-2">
-                                <span id="weather-temp" class="text-3xl font-light theme-text">--°</span>
-                                <span id="weather-condition" class="text-sm theme-text-muted">Loading...</span>
-                            </div>
-                            <div class="flex items-center gap-3 text-xs theme-text-muted mt-1">
-                                <span id="weather-hilo">H: --° L: --°</span>
-                                <span id="weather-extra"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sunrise/Sunset -->
-                    <div class="flex items-center gap-4 pl-6 border-l border-slate-700/50">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">🌅</span>
-                            <div>
-                                <div class="text-[10px] theme-text-muted uppercase">Sunrise</div>
-                                <div id="sunrise-time" class="text-sm font-medium theme-text">--:--</div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">🌇</span>
-                            <div>
-                                <div class="text-[10px] theme-text-muted uppercase">Sunset</div>
-                                <div id="sunset-time" class="text-sm font-medium theme-text">--:--</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Prayer Times -->
-                    <div class="flex items-center gap-3 pl-6 border-l border-slate-700/50">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">🕌</span>
-                            <div>
-                                <div class="text-[10px] theme-text-muted uppercase">Fajr</div>
-                                <div id="prayer-fajr" class="text-sm font-medium theme-text">--:--</div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] theme-text-muted uppercase">Dhuhr</div>
-                            <div id="prayer-dhuhr" class="text-sm font-medium theme-text">--:--</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] theme-text-muted uppercase">Asr</div>
-                            <div id="prayer-asr" class="text-sm font-medium theme-text">--:--</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] theme-text-muted uppercase">Maghrib</div>
-                            <div id="prayer-maghrib" class="text-sm font-medium theme-text">--:--</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] theme-text-muted uppercase">Isha</div>
-                            <div id="prayer-isha" class="text-sm font-medium theme-text">--:--</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Time -->
-                <div class="text-right">
-                    <div id="current-time" class="text-5xl font-light theme-text tracking-tight">--:--</div>
-                    <div id="current-date" class="theme-text-muted text-sm mt-1">Loading...</div>
-                </div>
-            </div>
-
+        <div class="flex-1 flex flex-col p-6 pt-2 h-full overflow-hidden">
             <!-- Tab Content -->
             <div id="main-content" class="flex-1 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden theme-transition">
 
@@ -1248,6 +1237,7 @@
                 </div>
             </div>
         </div>
+        </div> <!-- Close Content Area with Sidebar -->
     </div>
 
     <script>
@@ -1256,7 +1246,7 @@
         let currentView = localStorage.getItem('currentView') || 'month';
         let shouldScrollToTime = true; // Only scroll to current time on view switch, not data refresh
         // Dashboard Version
-        const DASHBOARD_VERSION = '1.5.0';
+        const DASHBOARD_VERSION = '1.5.3';
 
         // Connection State (with grace period - show indicator only after 3 consecutive failures)
         let isConnected = true; // Assume connected initially
