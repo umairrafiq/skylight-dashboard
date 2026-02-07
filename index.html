@@ -1197,7 +1197,7 @@
 
                         <div class="flex items-center gap-4">
                             <!-- Calendar Legend (dynamic toggles) -->
-                            <div id="calendar-legend" class="flex items-center gap-3 mr-4">
+                            <div id="calendar-legend" class="grid grid-cols-5 gap-x-4 gap-y-1 mr-4" style="max-width: 500px;">
                                 <!-- Populated dynamically -->
                             </div>
 
@@ -1246,7 +1246,7 @@
         let currentView = localStorage.getItem('currentView') || 'month';
         let shouldScrollToTime = true; // Only scroll to current time on view switch, not data refresh
         // Dashboard Version
-        const DASHBOARD_VERSION = '1.5.3';
+        const DASHBOARD_VERSION = '1.6.0';
 
         // Connection State (with grace period - show indicator only after 3 consecutive failures)
         let isConnected = true; // Assume connected initially
@@ -2162,8 +2162,114 @@
         }
 
         // Weather
+        async function loadWeatherCache() {
+            // Load cached weather data from server
+            try {
+                const response = await fetch('/api/weather/cache');
+                const cache = await response.json();
+                
+                // Restore daily forecasts
+                if (cache.daily && cache.daily.length > 0) {
+                    cache.daily.forEach(f => {
+                        const date = safeParseDate(f.date);
+                        if (!date) return;
+                        const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                        // Only use cached data if not already loaded
+                        if (!weatherForecast[dateKey]) {
+                            weatherForecast[dateKey] = {
+                                condition: f.condition,
+                                high: f.high,
+                                low: f.low,
+                                highC: f.high_c,
+                                lowC: f.low_c,
+                                icon: f.icon || getWeatherIcon(f.condition),
+                                cached: true
+                            };
+                        }
+                    });
+                    console.log('Loaded', cache.daily.length, 'cached daily forecasts');
+                }
+                
+                // Restore hourly forecasts
+                if (cache.hourly && cache.hourly.length > 0) {
+                    cache.hourly.forEach(f => {
+                        const dateKey = f.date.replace(/-/g, '-'); // Keep as YYYY-MM-DD for parsing
+                        const dateParts = f.date.split('-');
+                        const year = parseInt(dateParts[0]);
+                        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+                        const day = parseInt(dateParts[2]);
+                        const jsDateKey = `${year}-${month}-${day}`;
+                        const hour = f.hour;
+                        
+                        if (!hourlyForecast[jsDateKey]) {
+                            hourlyForecast[jsDateKey] = {};
+                        }
+                        // Only use cached data if not already loaded
+                        if (!hourlyForecast[jsDateKey][hour]) {
+                            hourlyForecast[jsDateKey][hour] = {
+                                temp: f.temp,
+                                tempC: f.temp_c,
+                                condition: f.condition || 'unknown',
+                                icon: f.icon || getWeatherIcon(f.condition),
+                                cached: true
+                            };
+                        }
+                    });
+                    console.log('Loaded', cache.hourly.length, 'cached hourly forecasts');
+                }
+            } catch (e) {
+                console.log('Weather cache not available:', e.message);
+            }
+        }
+
+        async function saveWeatherCache(dailyForecasts, hourlyForecasts) {
+            // Save forecasts to server cache
+            try {
+                if (dailyForecasts && dailyForecasts.length > 0) {
+                    const dailyData = dailyForecasts.map(f => ({
+                        date: f.datetime ? f.datetime.split('T')[0] : null,
+                        high: typeof f.temperature === 'number' ? Math.round(f.temperature) : null,
+                        low: typeof f.templow === 'number' ? Math.round(f.templow) : null,
+                        high_c: typeof f.temperature === 'number' ? fahrenheitToCelsius(Math.round(f.temperature)) : null,
+                        low_c: typeof f.templow === 'number' ? fahrenheitToCelsius(Math.round(f.templow)) : null,
+                        condition: f.condition,
+                        icon: getWeatherIcon(f.condition),
+                        precipitation_probability: f.precipitation_probability
+                    })).filter(f => f.date);
+                    
+                    await fetch('/api/weather/cache/daily', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ forecasts: dailyData })
+                    });
+                }
+                
+                if (hourlyForecasts && hourlyForecasts.length > 0) {
+                    const hourlyData = hourlyForecasts.map(f => ({
+                        datetime: f.datetime,
+                        temperature: f.temperature,
+                        temp_c: typeof f.temperature === 'number' ? fahrenheitToCelsius(Math.round(f.temperature)) : null,
+                        condition: f.condition,
+                        icon: getWeatherIcon(f.condition),
+                        precipitation_probability: f.precipitation_probability
+                    }));
+                    
+                    await fetch('/api/weather/cache/hourly', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ forecasts: hourlyData })
+                    });
+                }
+            } catch (e) {
+                console.log('Failed to save weather cache:', e.message);
+            }
+        }
+
         async function loadWeather() {
             try {
+                // First load cached data (for historical values)
+                await loadWeatherCache();
+                
                 const states = await fetchHA('/api/states');
                 const weather = states.find(s => s.entity_id === 'weather.forecast_home');
 
@@ -2190,6 +2296,10 @@
                     // Update weather icon based on condition
                     document.getElementById('weather-icon').textContent = getWeatherIcon(condition);
 
+                    // Variables to store raw forecasts for caching
+                    let rawDailyForecasts = [];
+                    let rawHourlyForecasts = [];
+
                     // Get forecast for high/low and store for calendar
                     try {
                         const forecastResponse = await fetch('/api/services/weather/get_forecasts?return_response', {
@@ -2203,9 +2313,9 @@
                         const forecastData = await forecastResponse.json();
                         if (forecastData.service_response && forecastData.service_response['weather.forecast_home']) {
                             const forecasts = forecastData.service_response['weather.forecast_home'].forecast || [];
+                            rawDailyForecasts = forecasts;
 
-                            // Store forecast by date for calendar display
-                            weatherForecast = {};
+                            // Store forecast by date for calendar display (overwriting cache with fresh data)
                             forecasts.forEach(f => {
                                 const date = safeParseDate(f.datetime);
                                 if (!date) return; // Skip invalid dates
@@ -2258,9 +2368,9 @@
                         const hourlyData = await hourlyResponse.json();
                         if (hourlyData.service_response && hourlyData.service_response['weather.forecast_home']) {
                             const hourlyForecasts = hourlyData.service_response['weather.forecast_home'].forecast || [];
+                            rawHourlyForecasts = hourlyForecasts;
                             
-                            // Store hourly forecast by date-hour key
-                            hourlyForecast = {};
+                            // Store hourly forecast by date-hour key (overwriting cache with fresh data)
                             hourlyForecasts.forEach(f => {
                                 const date = safeParseDate(f.datetime);
                                 if (!date) return; // Skip invalid dates
@@ -2283,6 +2393,9 @@
                     } catch (e) {
                         console.error('Hourly forecast load error:', e);
                     }
+
+                    // Save forecasts to cache (async, don't wait)
+                    saveWeatherCache(rawDailyForecasts, rawHourlyForecasts);
 
                     // Update humidity/wind display
                     const extraInfo = document.getElementById('weather-extra');

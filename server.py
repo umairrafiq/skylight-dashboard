@@ -17,6 +17,8 @@ import threading
 import time
 import asyncio
 import subprocess
+import sqlite3
+from datetime import datetime, timedelta
 # Dashboard version - read from index.html so there's one source of truth
 def get_dashboard_version():
     """Extract version from index.html DASHBOARD_VERSION constant"""
@@ -83,6 +85,143 @@ start_time = time.time()
 latest_screenshot = None  # Base64 PNG data
 screenshot_timestamp = 0
 screenshot_lock = threading.Lock()
+
+
+# ==================== WEATHER CACHE DATABASE ====================
+
+WEATHER_DB_PATH = os.path.join(os.path.dirname(__file__), 'weather_cache.db')
+
+def init_weather_db():
+    """Initialize SQLite database for weather cache"""
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    cursor = conn.cursor()
+    
+    # Daily forecast cache
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS daily_forecast (
+            date TEXT PRIMARY KEY,
+            high REAL,
+            low REAL,
+            high_c REAL,
+            low_c REAL,
+            condition TEXT,
+            icon TEXT,
+            precipitation_probability REAL,
+            cached_at TEXT
+        )
+    ''')
+    
+    # Hourly forecast cache
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS hourly_forecast (
+            datetime TEXT PRIMARY KEY,
+            date TEXT,
+            hour INTEGER,
+            temp REAL,
+            temp_c REAL,
+            condition TEXT,
+            icon TEXT,
+            precipitation_probability REAL,
+            cached_at TEXT
+        )
+    ''')
+    
+    # Clean up old data (older than 7 days)
+    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    cursor.execute('DELETE FROM daily_forecast WHERE date < ?', (week_ago,))
+    cursor.execute('DELETE FROM hourly_forecast WHERE date < ?', (week_ago,))
+    
+    conn.commit()
+    conn.close()
+    print(f"Weather cache database initialized: {WEATHER_DB_PATH}")
+
+def save_daily_forecast(forecasts):
+    """Save daily forecasts to cache"""
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+    
+    for f in forecasts:
+        cursor.execute('''
+            INSERT OR REPLACE INTO daily_forecast 
+            (date, high, low, high_c, low_c, condition, icon, precipitation_probability, cached_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            f.get('date'),
+            f.get('high'),
+            f.get('low'),
+            f.get('high_c'),
+            f.get('low_c'),
+            f.get('condition'),
+            f.get('icon'),
+            f.get('precipitation_probability'),
+            now
+        ))
+    
+    conn.commit()
+    conn.close()
+
+def save_hourly_forecast(forecasts):
+    """Save hourly forecasts to cache"""
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+    
+    for f in forecasts:
+        dt = f.get('datetime', '')
+        if dt:
+            try:
+                dt_obj = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                date_str = dt_obj.strftime('%Y-%m-%d')
+                hour = dt_obj.hour
+            except:
+                continue
+                
+            cursor.execute('''
+                INSERT OR REPLACE INTO hourly_forecast 
+                (datetime, date, hour, temp, temp_c, condition, icon, precipitation_probability, cached_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                dt,
+                date_str,
+                hour,
+                f.get('temperature'),
+                f.get('temp_c'),
+                f.get('condition'),
+                f.get('icon'),
+                f.get('precipitation_probability'),
+                now
+            ))
+    
+    conn.commit()
+    conn.close()
+
+def get_cached_daily_forecast():
+    """Get all cached daily forecasts"""
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM daily_forecast ORDER BY date')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+def get_cached_hourly_forecast():
+    """Get all cached hourly forecasts"""
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM hourly_forecast ORDER BY datetime')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+# Initialize weather database on module load
+init_weather_db()
 
 
 # ==================== MQTT CLIENT ====================
@@ -929,10 +1068,28 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_screenshot_request()
         elif self.path == '/api/screenshot/take':
             self.handle_take_screenshot()
+        elif self.path == '/api/weather/cache':
+            self.handle_get_weather_cache()
         elif self.path.startswith('/api/'):
             self.proxy_request('GET')
         else:
             super().do_GET()
+
+    def handle_get_weather_cache(self):
+        """Return cached weather data"""
+        try:
+            data = {
+                'daily': get_cached_daily_forecast(),
+                'hourly': get_cached_hourly_forecast()
+            }
+            response = json.dumps(data).encode()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', len(response))
+            self.end_headers()
+            self.wfile.write(response)
+        except Exception as e:
+            self.send_error(500, f'Error getting weather cache: {e}')
 
     def handle_screenshot_request(self):
         """Serve the latest screenshot"""
@@ -1011,10 +1168,46 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json_response({'success': False, 'error': str(e)})
 
     def do_POST(self):
-        if self.path.startswith('/api/'):
+        if self.path == '/api/weather/cache/daily':
+            self.handle_save_daily_forecast()
+        elif self.path == '/api/weather/cache/hourly':
+            self.handle_save_hourly_forecast()
+        elif self.path.startswith('/api/'):
             self.proxy_request('POST')
         else:
             self.send_error(405, "Method Not Allowed")
+
+    def handle_save_daily_forecast(self):
+        """Save daily forecast to cache"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            forecasts = data.get('forecasts', [])
+            save_daily_forecast(forecasts)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'ok', 'saved': len(forecasts)}).encode())
+        except Exception as e:
+            self.send_error(500, f'Error saving daily forecast: {e}')
+
+    def handle_save_hourly_forecast(self):
+        """Save hourly forecast to cache"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            forecasts = data.get('forecasts', [])
+            save_hourly_forecast(forecasts)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'ok', 'saved': len(forecasts)}).encode())
+        except Exception as e:
+            self.send_error(500, f'Error saving hourly forecast: {e}')
 
     def proxy_request(self, method):
         try:
