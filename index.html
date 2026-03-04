@@ -2226,18 +2226,18 @@
             }
         }
         
-        // Mark habit complete (tick button) - respects child-proof mode
+        // Mark habit complete/uncomplete (toggle) - respects child-proof mode
         async function markHabitComplete(habitId, isCompleted) {
             if (childProofMode) {
                 // In child-proof mode, habits cannot be toggled
                 return;
             }
-            if (isCompleted) return; // Already completed, no action
             try {
-                await fetch(`/api/habits/${habitId}/complete`, { method: 'POST' });
+                const endpoint = isCompleted ? 'uncomplete' : 'complete';
+                await fetch(`/api/habits/${habitId}/${endpoint}`, { method: 'POST' });
                 loadHabits();
             } catch (e) {
-                console.error('Error marking habit complete:', e);
+                console.error('Error toggling habit:', e);
             }
         }
         
