@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect x="8" y="8" width="112" height="112" rx="20" fill="url(#bg)"/>
+  <!-- Sun -->
+  <circle cx="64" cy="50" r="20" fill="url(#sun)"/>
+  <!-- Sun rays -->
+  <g stroke="#fbbf24" stroke-width="3" stroke-linecap="round">
+    <line x1="64" y1="22" x2="64" y2="14"/>
+    <line x1="64" y1="78" x2="64" y2="86"/>
+    <line x1="36" y1="50" x2="28" y2="50"/>
+    <line x1="92" y1="50" x2="100" y2="50"/>
+    <line x1="44" y1="30" x2="38" y2="24"/>
+    <line x1="84" y1="70" x2="90" y2="76"/>
+    <line x1="84" y1="30" x2="90" y2="24"/>
+    <line x1="44" y1="70" x2="38" y2="76"/>
+  </g>
+  <!-- Calendar grid -->
+  <rect x="28" y="82" width="72" height="32" rx="4" fill="white" opacity="0.9"/>
+  <line x1="52" y1="82" x2="52" y2="114" stroke="#6366f1" stroke-width="1.5"/>
+  <line x1="76" y1="82" x2="76" y2="114" stroke="#6366f1" stroke-width="1.5"/>
+  <line x1="28" y1="98" x2="100" y2="98" stroke="#6366f1" stroke-width="1.5"/>
+  <!-- Calendar dots -->
+  <circle cx="40" cy="90" r="3" fill="#ec4899"/>
+  <circle cx="64" cy="90" r="3" fill="#10b981"/>
+  <circle cx="88" cy="106" r="3" fill="#f59e0b"/>
+</svg>
