@@ -3,19 +3,9 @@
 # Opens the dashboard in fullscreen browser
 # Server runs as systemd user service (skylight-server.service)
 
-URL="http://localhost:9000/index.html?v=$(date +%s)"
+URL="https://10.0.0.151:8765/index.html?v=$(date +%s)"
 
-# Ensure server is running
-if ! systemctl --user is-active --quiet skylight-server; then
-    systemctl --user start skylight-server
-    sleep 1
-fi
-
-# Check if server is responding
-if ! curl -s --max-time 2 "$URL" > /dev/null 2>&1; then
-    systemctl --user restart skylight-server
-    sleep 2
-fi
+# No local server needed - using remote hosted service
 
 # Kill any existing dashboard windows
 pkill -f "skylight-chrome" 2>/dev/null
