@@ -4,7 +4,7 @@
 
 LOG_FILE="$HOME/skylight-dashboard/logs/kiosk-watchdog.log"
 SCREENSHOT="/tmp/kiosk-check.png"
-KIOSK_URL="http://localhost:9000/index.html"
+KIOSK_URL="https://10.0.0.151:8765/index.html"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -72,7 +72,7 @@ check_screen() {
     else
         log "ImageMagick not installed, using fallback check"
         # Fallback: just check if Chrome is responding
-        if ! curl -s --max-time 5 http://localhost:9000/api/ | grep -q "API running"; then
+        if ! curl -s --max-time 5 https://10.0.0.151:8765/api/ | grep -q "API running"; then
             log "WARNING: Server not responding"
             return 2
         fi
@@ -91,7 +91,7 @@ check_chrome_running() {
 }
 
 check_server_running() {
-    if ! curl -s --max-time 5 http://localhost:9000/api/ | grep -q "API running"; then
+    if ! curl -s --max-time 5 https://10.0.0.151:8765/api/ | grep -q "API running"; then
         log "WARNING: Dashboard server not responding"
         return 1
     fi

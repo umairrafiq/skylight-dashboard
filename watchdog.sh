@@ -3,7 +3,7 @@
 # Checks if the server is responding and restarts if hung
 
 TIMEOUT=5
-URL="http://localhost:9000/index.html"
+URL="https://10.0.0.151:8765/index.html"
 LOG="/tmp/skylight-watchdog.log"
 
 # Check if server responds within timeout
